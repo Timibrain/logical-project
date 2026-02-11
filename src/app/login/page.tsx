@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { JetBrains_Mono, Syncopate } from 'next/font/google';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation'; //
 
 // --- FONTS ---
 const mono = JetBrains_Mono({ subsets: ['latin'] });
@@ -27,12 +28,14 @@ type BlobEntity = {
 };
 
 export default function FerrofluidLogin() {
+    const router = useRouter();
     const containerRef = useRef<HTMLDivElement>(null);
     const cursorRef = useRef<HTMLDivElement>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
 
     // --- PHYSICS ENGINE ---
     useEffect(() => {
@@ -130,7 +133,7 @@ export default function FerrofluidLogin() {
         } else {
             // Redirect or update state
             console.log('Logged in successfully');
-            // router.push('/dashboard')
+            router.push('/dashboard')
         }
         setLoading(false);
     };
@@ -164,10 +167,10 @@ export default function FerrofluidLogin() {
                     className="mb-14"
                 >
                     <span className={`block text-xs uppercase tracking-[4px] text-gray-500 mb-2 ${mono.className}`}>
-                        Security Interface v4.0
+                        Private Member Access
                     </span>
                     <h1 className="text-4xl font-bold tracking-tighter bg-gradient-to-b from-white via-white to-gray-600 text-transparent bg-clip-text">
-                        NEURAL<br />RECOGNITION
+                        IDENTITY <br />VERIFICATION
                     </h1>
                 </motion.div>
 
@@ -180,7 +183,7 @@ export default function FerrofluidLogin() {
                         className="group relative"
                     >
                         <label className={`block text-[10px] text-gray-500 mb-2 uppercase tracking-widest transition-colors group-focus-within:text-white ${mono.className}`}>
-                            Identity_UID (Email)
+                            Member ID / Email
                         </label>
                         <input
                             type="email"
@@ -199,7 +202,7 @@ export default function FerrofluidLogin() {
                         className="group relative"
                     >
                         <label className={`block text-[10px] text-gray-500 mb-2 uppercase tracking-widest transition-colors group-focus-within:text-white ${mono.className}`}>
-                            Core_Key (Password)
+                            Security Passcode
                         </label>
                         <input
                             type="password"
@@ -226,7 +229,7 @@ export default function FerrofluidLogin() {
                         className={`mt-8 w-full bg-white text-black py-5 font-bold text-xs tracking-[2px] hover:scale-[1.02] active:scale-[0.98] transition-transform relative overflow-hidden group ${display.className}`}
                     >
                         <span className="relative z-10">
-                            {loading ? 'INITIALIZING...' : 'INITIALIZE COHESION'}
+                            {loading ? 'VERIFYING CREDENTIALS...' : 'AUTHENTICATE SESSION'}
                         </span>
                         <div className="absolute inset-0 bg-gray-200 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </motion.button>
@@ -235,9 +238,8 @@ export default function FerrofluidLogin() {
 
             {/* Metadata Footer */}
             <div className={`fixed bottom-10 right-10 text-[10px] text-right text-gray-800 leading-relaxed pointer-events-none ${mono.className}`}>
-                STATUS: {loading ? 'SYNCING' : 'STANDBY'}<br />
-                FIELD_STRENGTH: 4.82 Tesla<br />
-                ENCRYPTION: SHA-256
+                CONNECTION: {loading ? 'VERIFYING...' : 'SECURE'}<br />
+                SECURITY: 256-Bit SSL Encrypted<br />
             </div>
         </main>
     );

@@ -13,6 +13,10 @@
     transition: transform 0.3s ease-out;
   }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
   .cursor-blob {
     @apply fixed w-3 h-3 bg-white rounded-full pointer-events-none z-9999;
     mix-blend-mode: difference;
@@ -45,5 +49,5 @@
     .glass-panel {
       @apply bg-[#14171d]/80 backdrop-blur-xl border border-white/10 shadow-2xl;
     }
-    
+
 }
