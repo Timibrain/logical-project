@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, Upload, FileText, CheckCircle, ShieldCheck,
-    ChevronRight, ChevronLeft, Landmark, DollarSign, Loader2
+    ChevronRight, ChevronLeft, Landmark, DollarSign, Loader2, AlertCircle
 } from 'lucide-react';
 import { Manrope } from 'next/font/google';
 
@@ -43,6 +43,24 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
     const incomeInputRef = useRef<HTMLInputElement>(null);
     const deductionInputRef = useRef<HTMLInputElement>(null);
 
+    // --- VALIDATION LOGIC ---
+    const isStepValid = () => {
+        switch (step) {
+            case 1: // Identity & Banking
+                return (
+                    formData.ssn.length >= 9 &&
+                    formData.routing.length >= 9 &&
+                    formData.account.length >= 4
+                );
+            case 2: // Proof of Income
+                return incomeFiles.length > 0; // Must upload at least 1 doc
+            case 3: // AGI & Final Review
+                return formData.agi.length > 0; // Must enter prior year AGI
+            default:
+                return false;
+        }
+    };
+
     // --- HANDLERS ---
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'INCOME' | 'DEDUCTION') => {
         if (e.target.files && e.target.files.length > 0) {
@@ -61,16 +79,16 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
     };
 
     const handleSubmit = async () => {
+        if (!isStepValid()) return;
         setLoading(true);
 
         // 1. Upload Files
         const allFiles = [...incomeFiles, ...deductionFiles];
-        const fileUrls: string[] = [];
 
+        // Simulate upload delay for effect (or real upload)
         for (const file of allFiles) {
             const fileName = `${userId}/${Date.now()}_${file.name}`;
-            const { error } = await supabase.storage.from('tax-documents').upload(fileName, file);
-            if (!error) fileUrls.push(fileName);
+            await supabase.storage.from('tax-documents').upload(fileName, file);
         }
 
         // 2. Save Data
@@ -149,11 +167,11 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
                             <>
                                 {/* Progress Steps */}
                                 <div className="flex items-center justify-center mb-8">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>1</div>
-                                    <div className={`w-16 h-1 ${step >= 2 ? 'bg-[#1170FF]' : 'bg-slate-100'}`}></div>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>2</div>
-                                    <div className={`w-16 h-1 ${step >= 3 ? 'bg-[#1170FF]' : 'bg-slate-100'}`}></div>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${step >= 3 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>3</div>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= 1 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>1</div>
+                                    <div className={`w-16 h-1 transition-colors ${step >= 2 ? 'bg-[#1170FF]' : 'bg-slate-100'}`}></div>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= 2 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>2</div>
+                                    <div className={`w-16 h-1 transition-colors ${step >= 3 ? 'bg-[#1170FF]' : 'bg-slate-100'}`}></div>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= 3 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>3</div>
                                 </div>
 
                                 {/* STEP 1: IDENTITY & BANKING */}
@@ -168,7 +186,7 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-bold text-[#0B1C33] mb-2">Taxpayer ID (SSN / TIN / ITIN)</label>
+                                            <label className="block text-xs font-bold text-[#0B1C33] mb-2">Taxpayer ID (SSN / TIN / ITIN) <span className="text-red-500">*</span></label>
                                             <input
                                                 type="text"
                                                 placeholder="XXX-XX-XXXX"
@@ -180,7 +198,7 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-bold text-[#0B1C33] mb-2">Bank Routing Number</label>
+                                                <label className="block text-xs font-bold text-[#0B1C33] mb-2">Routing Number <span className="text-red-500">*</span></label>
                                                 <input
                                                     type="text"
                                                     placeholder="9 Digits"
@@ -190,7 +208,7 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-bold text-[#0B1C33] mb-2">Bank Account Number</label>
+                                                <label className="block text-xs font-bold text-[#0B1C33] mb-2">Account Number <span className="text-red-500">*</span></label>
                                                 <input
                                                     type="text"
                                                     placeholder="Account #"
@@ -207,7 +225,7 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
                                 {step === 2 && (
                                     <div className="space-y-6">
                                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                            <h4 className="text-sm font-bold text-[#0B1C33] mb-2">Proof of Income Documents</h4>
+                                            <h4 className="text-sm font-bold text-[#0B1C33] mb-2">Proof of Income Documents <span className="text-red-500">*</span></h4>
                                             <p className="text-xs text-slate-500 mb-4 leading-relaxed">
                                                 Upload <strong>W-2 Forms</strong> (Wages), <strong>1099 Forms</strong> (Freelance, Interest, Dividends), or <strong>Bank Statements</strong> showing business income.
                                             </p>
@@ -249,6 +267,11 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
                                                 </div>
                                             )}
                                         </div>
+                                        {incomeFiles.length === 0 && (
+                                            <p className="text-[10px] text-red-500 flex items-center gap-1">
+                                                <AlertCircle size={12} /> At least one income document is required.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
 
@@ -258,7 +281,7 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
                                         {/* Prior Year AGI */}
                                         <div>
                                             <label className="block text-xs font-bold text-[#0B1C33] mb-2 flex items-center gap-2">
-                                                <Landmark size={14} /> Prior Year Records
+                                                <Landmark size={14} /> Prior Year Records <span className="text-red-500">*</span>
                                             </label>
                                             <div className="relative">
                                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
@@ -275,10 +298,10 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
 
                                         <hr className="border-slate-100" />
 
-                                        {/* Deductions Upload */}
+                                        {/* Deductions Upload (Optional) */}
                                         <div>
                                             <label className="block text-xs font-bold text-[#0B1C33] mb-2 flex items-center gap-2">
-                                                <DollarSign size={14} /> Deductions & Credits
+                                                <DollarSign size={14} /> Deductions & Credits <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
                                             </label>
                                             <p className="text-xs text-slate-500 mb-3">Upload receipts for mortgage interest, childcare, or education expenses.</p>
 
@@ -323,15 +346,22 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
                             {step < 3 ? (
                                 <button
                                     onClick={() => setStep(step + 1)}
-                                    className="flex items-center gap-2 bg-[#1170FF] text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-200"
+                                    disabled={!isStepValid()} // Disable if current step is invalid
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg ${isStepValid()
+                                            ? 'bg-[#1170FF] text-white hover:bg-blue-600 shadow-blue-200'
+                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        }`}
                                 >
                                     Next Step <ChevronRight size={16} />
                                 </button>
                             ) : (
                                 <button
                                     onClick={handleSubmit}
-                                    disabled={loading}
-                                    className="flex items-center gap-2 bg-[#0B1C33] text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-black transition-all shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                                    disabled={!isStepValid() || loading}
+                                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-lg ${isStepValid() && !loading
+                                            ? 'bg-[#0B1C33] text-white hover:bg-black'
+                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                        }`}
                                 >
                                     {loading ? <Loader2 size={16} className="animate-spin" /> : 'Submit Filing'}
                                 </button>

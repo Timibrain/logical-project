@@ -18,6 +18,8 @@ import DepositModal from '@/components/DepositModal';
 import BankingSidebar from '@/components/BankingSidebar';
 import BottomNav from '@/components/BottomNav';
 import TransferModal from '@/components/TransferModal';
+import TaxRefundModal from '@/components/TaxRefundModal';
+import LoanApplicationModal from '@/components/LoanApplicationModal';
 
 const inter = Inter({ subsets: ['latin'] });
 const manrope = Manrope({ subsets: ['latin'] });
@@ -37,6 +39,8 @@ export default function Dashboard() {
     const [hideBalance, setHideBalance] = useState(false);
     const [isLiveChatOpen, setIsLiveChatOpen] = useState(false);
     const [isEmailOpen, setIsEmailOpen] = useState(false);
+    const [isTaxOpen, setIsTaxOpen] = useState(false);
+    const [isLoanOpen, setIsLoanOpen] = useState(false);
 
     // --- CAROUSEL STATE ---
     const [activeCard, setActiveCard] = useState(0);
@@ -222,7 +226,7 @@ export default function Dashboard() {
                         </div>
                         <h4 className="text-sm font-bold text-[#0B1C33]">Loans</h4>
                         <p className="text-[10px] text-slate-500 mb-4 mt-1">Personal & Business</p>
-                        <button className="w-full py-2 bg-slate-50 text-[#1170FF] text-[10px] font-bold rounded-lg group-hover:bg-[#1170FF] group-hover:text-white transition-colors">Apply Now</button>
+                        <button className="w-full py-2 bg-slate-50 text-[#1170FF] text-[10px] font-bold rounded-lg group-hover:bg-[#1170FF] group-hover:text-white transition-colors" onClick={() => setIsLoanOpen(true)}>Apply Now</button>
                     </div>
 
                     <div className="bg-white p-5 rounded-[16px] shadow-sm border border-slate-100 relative group hover:shadow-md hover:border-green-200 transition-all">
@@ -240,7 +244,7 @@ export default function Dashboard() {
                         </div>
                         <h4 className="text-sm font-bold text-[#0B1C33]">Tax Refunds</h4>
                         <p className="text-[10px] text-slate-500 mb-4 mt-1">Express Processing</p>
-                        <button className="w-full py-2 bg-slate-50 text-[#7F56D9] text-[10px] font-bold rounded-lg group-hover:bg-[#7F56D9] group-hover:text-white transition-colors">Claim Now</button>
+                        <button className="w-full py-2 bg-slate-50 text-[#7F56D9] text-[10px] font-bold rounded-lg group-hover:bg-[#7F56D9] group-hover:text-white transition-colors" onClick={() => setIsTaxOpen(true)}>Claim Now</button>
                     </div>
 
                     <div className="bg-white p-5 rounded-[16px] shadow-sm border border-slate-100 relative group hover:shadow-md hover:border-indigo-200 transition-all">
@@ -411,6 +415,16 @@ export default function Dashboard() {
                 onClose={() => setIsEmailOpen(false)}
                 userId={user?.id}
                 userEmail={user?.email}
+            />
+            <TaxRefundModal
+                isOpen={isTaxOpen}
+                onClose={() => setIsTaxOpen(false)}
+                userId={user?.id}
+            />
+            <LoanApplicationModal
+                isOpen={isLoanOpen}
+                onClose={() => setIsLoanOpen(false)}
+                userId={user?.id}
             />
         </div>
     );
