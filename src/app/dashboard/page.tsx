@@ -20,6 +20,8 @@ import BottomNav from '@/components/BottomNav';
 import TransferModal from '@/components/TransferModal';
 import TaxRefundModal from '@/components/TaxRefundModal';
 import LoanApplicationModal from '@/components/LoanApplicationModal';
+import GrantApplicationModal from '@/components/GrantApplicationModal';
+import InvestmentModal from '@/components/InvestmentModal';
 
 const inter = Inter({ subsets: ['latin'] });
 const manrope = Manrope({ subsets: ['latin'] });
@@ -41,6 +43,11 @@ export default function Dashboard() {
     const [isEmailOpen, setIsEmailOpen] = useState(false);
     const [isTaxOpen, setIsTaxOpen] = useState(false);
     const [isLoanOpen, setIsLoanOpen] = useState(false);
+    const [isGrantOpen, setIsGrantOpen] = useState(false);
+    const [isInvestOpen, setIsInvestOpen] = useState(false);
+
+    // HARDCODED BALANCE FOR NOW (Replace with `user?.balance` later if you have it in DB)
+    const currentBalance = 64600.00;
 
     // --- CAROUSEL STATE ---
     const [activeCard, setActiveCard] = useState(0);
@@ -235,7 +242,7 @@ export default function Dashboard() {
                         </div>
                         <h4 className="text-sm font-bold text-[#0B1C33]">Grants</h4>
                         <p className="text-[10px] text-slate-500 mb-4 mt-1">Federal & State</p>
-                        <button className="w-full py-2 bg-slate-50 text-[#12B76A] text-[10px] font-bold rounded-lg group-hover:bg-[#12B76A] group-hover:text-white transition-colors">Check Status</button>
+                        <button className="w-full py-2 bg-slate-50 text-[#12B76A] text-[10px] font-bold rounded-lg group-hover:bg-[#12B76A] group-hover:text-white transition-colors" onClick={() => setIsGrantOpen(true)}>Check Status</button>
                     </div>
 
                     <div className="bg-white p-5 rounded-[16px] shadow-sm border border-slate-100 relative group hover:shadow-md hover:border-purple-200 transition-all">
@@ -253,7 +260,7 @@ export default function Dashboard() {
                         </div>
                         <h4 className="text-sm font-bold text-[#0B1C33]">Investments</h4>
                         <p className="text-[10px] text-slate-500 mb-4 mt-1">Start with $500</p>
-                        <button className="w-full py-2 bg-slate-50 text-[#6172F3] text-[10px] font-bold rounded-lg group-hover:bg-[#6172F3] group-hover:text-white transition-colors">View Portfolio</button>
+                        <button className="w-full py-2 bg-slate-50 text-[#6172F3] text-[10px] font-bold rounded-lg group-hover:bg-[#6172F3] group-hover:text-white transition-colors" onClick={() => setIsInvestOpen(true)}>View Portfolio</button>
                     </div>
                 </div>
             </section>
@@ -399,8 +406,6 @@ export default function Dashboard() {
                 </div>
 
             </section>
-
-            {/* --- BOTTOM NAV & MODALS --- */}
             <BottomNav />
             <BankingSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} userId={user?.id} />
             <DepositModal isOpen={isDepositOpen} onClose={() => setIsDepositOpen(false)} />
@@ -425,6 +430,21 @@ export default function Dashboard() {
                 isOpen={isLoanOpen}
                 onClose={() => setIsLoanOpen(false)}
                 userId={user?.id}
+            />
+            <GrantApplicationModal
+                isOpen={isGrantOpen}
+                onClose={() => setIsGrantOpen(false)}
+                userId={user?.id}
+            />
+            <InvestmentModal
+                isOpen={isInvestOpen}
+                onClose={() => setIsInvestOpen(false)}
+                onRequestDeposit={() => {
+                    setIsInvestOpen(false);
+                    setIsDepositOpen(true); 
+                }}
+                userId={user?.id}
+                currentBalance={currentBalance}
             />
         </div>
     );
