@@ -159,7 +159,7 @@ export default function FerrofluidLogin() {
             <div ref={cursorRef} className="cursor-blob hidden md:block" />
 
             {/* Login Interface */}
-            <section className="relative z-10 w-full max-w-[450px] p-10">
+            <section className="relative z-10 w-full max-w-112.5 p-10">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -170,7 +170,7 @@ export default function FerrofluidLogin() {
                         Private Member Access
                     </span>
                     <h1 className="text-4xl font-bold tracking-tighter bg-gradient-to-b from-white via-white to-gray-600 text-transparent bg-clip-text">
-                        IDENTITY <br />VERIFICATION
+                        IDENTITY.. <br />VERIFICATION
                     </h1>
                 </motion.div>
 
@@ -229,7 +229,7 @@ export default function FerrofluidLogin() {
                         className={`mt-8 w-full bg-white text-black py-5 font-bold text-xs tracking-[2px] hover:scale-[1.02] active:scale-[0.98] transition-transform relative overflow-hidden group ${display.className}`}
                     >
                         <span className="relative z-10">
-                            {loading ? 'VERIFYING CREDENTIALS...' : 'AUTHENTICATE SESSION'}
+                            {loading ? 'VERIFYING CREDENTIALS....' : 'AUTHENTICATE SESSION'}
                         </span>
                         <div className="absolute inset-0 bg-gray-200 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                     </motion.button>
