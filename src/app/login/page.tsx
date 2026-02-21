@@ -155,7 +155,7 @@ export default function FerrofluidLogin() {
             {/* Background Layer */}
             <div ref={containerRef} className="ferro-container fixed inset-0 z-0" />
 
-            {/* Custom Cursor */}
+            {/* Custom new Cursor */}
             <div ref={cursorRef} className="cursor-blob hidden md:block" />
 
             {/* Login Interface */}
@@ -194,7 +194,7 @@ export default function FerrofluidLogin() {
                         />
                     </motion.div>
 
-                    {/* Password Input */}
+                    {/* Password for Input */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
