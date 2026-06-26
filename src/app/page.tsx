@@ -1,197 +1,506 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { JetBrains_Mono, Inter } from 'next/font/google';
-import { motion } from 'framer-motion';
-import { ChevronRight, Globe, Shield, Users } from 'lucide-react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import ManualVerificationSection from '@/components/ManualVerificationSection';
+import {
+    Shield, Lock, Clock, TrendingUp, ChevronRight, CheckCircle,
+    Smartphone, Globe, Star, Menu, X, ArrowRight,
+    CreditCard, PiggyBank, BarChart3, Landmark, Phone, Mail, MapPin
+} from 'lucide-react';
 
-// --- FONTS ---
-const mono = JetBrains_Mono({ subsets: ['latin'] });
-const inter = Inter({ subsets: ['latin'] });
-
-// --- TYPE DEFINITIONS ---
-type Node = {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
+const WF = {
+    red: '#D71E28', redDark: '#A3151D', gold: '#FFCD41',
+    black: '#1A1A1A', bg: '#FAF8F5', surface: '#FFFFFF',
+    border: '#E8E2DA', muted: '#6B6560', light: '#F5F0EB',
 };
 
-export default function HeroPage() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [accessCode, setAccessCode] = useState('');
-  const [isHovering, setIsHovering] = useState(false);
+export default function HomePage() {
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // --- GRAPH ENGINE (Kept for "Global Network" feel, but softer speed) ---
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    return (
+        <div className="min-h-screen font-sans" style={{ background: WF.bg, color: WF.black }}>
 
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+            {/* ═══════════════════════════════════════════════════
+                NAV
+            ═══════════════════════════════════════════════════ */}
+            <nav className="fixed top-0 left-0 right-0 z-50 border-b"
+                style={{ background: 'rgba(250,248,245,0.97)', borderColor: WF.border, backdropFilter: 'blur(12px)' }}>
+                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                    {/* Logo */}
+                    <Link href="/" className="flex items-center gap-1.5">
+                        <span className="font-display text-xl font-bold italic" style={{ color: WF.red }}>West</span>
+                        <span className="font-display text-xl font-bold" style={{ color: WF.black }}>Bank</span>
+                    </Link>
 
-    const nodeCount = 40; // Fewer nodes for a cleaner look
-    const nodes: Node[] = [];
+                    {/* Desktop nav */}
+                    <div className="hidden md:flex items-center gap-8">
+                        {['Personal', 'Business', 'Mortgages', 'Investing', 'About'].map(item => (
+                            <a key={item} href="#"
+                                className="text-sm font-medium transition-colors hover:text-red-700"
+                                style={{ color: WF.muted }}>{item}</a>
+                        ))}
+                    </div>
 
-    for (let i = 0; i < nodeCount; i++) {
-      nodes.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.2, // Very slow, calm movement
-        vy: (Math.random() - 0.5) * 0.2,
-        size: Math.random() * 2 + 1,
-      });
-    }
+                    {/* Auth buttons */}
+                    <div className="hidden md:flex items-center gap-3">
+                        <Link href="/login"
+                            className="px-4 py-2 text-sm font-bold rounded-lg border transition-all hover:shadow-sm"
+                            style={{ borderColor: WF.border, color: WF.black }}>
+                            Sign In
+                        </Link>
+                        <Link href="/register"
+                            className="px-4 py-2 text-sm font-bold rounded-lg text-white transition-all hover:opacity-90"
+                            style={{ background: WF.red }}>
+                            Open Account
+                        </Link>
+                    </div>
 
-    const animate = () => {
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // White nodes instead of Cyan
+                    {/* Mobile hamburger */}
+                    <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+                        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
+                </div>
 
-      nodes.forEach((node, i) => {
-        node.x += node.vx;
-        node.y += node.vy;
-        if (node.x < 0 || node.x > width) node.vx *= -1;
-        if (node.y < 0 || node.y > height) node.vy *= -1;
+                {/* Mobile menu */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden border-t px-6 py-4 space-y-3" style={{ borderColor: WF.border, background: WF.surface }}>
+                        {['Personal', 'Business', 'Mortgages', 'Investing', 'About'].map(item => (
+                            <a key={item} href="#" className="block text-sm font-medium py-2" style={{ color: WF.muted }}>{item}</a>
+                        ))}
+                        <div className="pt-3 border-t flex flex-col gap-2" style={{ borderColor: WF.border }}>
+                            <Link href="/login" className="text-center py-2.5 text-sm font-bold rounded-lg border" style={{ borderColor: WF.border }}>Sign In</Link>
+                            <Link href="/register" className="text-center py-2.5 text-sm font-bold rounded-lg text-white" style={{ background: WF.red }}>Open Account</Link>
+                        </div>
+                    </div>
+                )}
+            </nav>
 
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2);
-        ctx.fill();
+            {/* ═══════════════════════════════════════════════════
+                HERO
+            ═══════════════════════════════════════════════════ */}
+            <section className="pt-32 pb-20 px-6 relative overflow-hidden" style={{ background: WF.bg }}>
+                {/* Decorative background shapes */}
+                <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-5 pointer-events-none"
+                    style={{ background: WF.red, filter: 'blur(80px)', transform: 'translate(30%, -30%)' }} />
+                <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full opacity-5 pointer-events-none"
+                    style={{ background: WF.gold, filter: 'blur(60px)', transform: 'translate(-30%, 30%)' }} />
 
-        for (let j = i + 1; j < nodes.length; j++) {
-          const other = nodes[j];
-          const dx = node.x - other.x;
-          const dy = node.y - other.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+                <div className="max-w-7xl mx-auto">
+                    <div className="max-w-3xl">
+                        {/* Trust strip */}
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8 text-xs font-bold"
+                            style={{ background: 'rgba(215,30,40,0.08)', color: WF.red }}>
+                            <Shield size={12} />
+                            FDIC Insured · Member Since 2019
+                        </div>
 
-          if (distance < 150) {
-            ctx.beginPath();
-            ctx.moveTo(node.x, node.y);
-            ctx.lineTo(other.x, other.y);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 - distance / 1500})`; // Very subtle lines
-            ctx.stroke();
-          }
-        }
-      });
-      requestAnimationFrame(animate);
-    };
+                        <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] mb-6"
+                            style={{ color: WF.black }}>
+                            Banking built<br />
+                            <span className="italic" style={{ color: WF.red }}>for people,</span><br />
+                            not algorithms.
+                        </h1>
 
-    const handleResize = () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
+                        <p className="text-lg leading-relaxed mb-10 max-w-xl" style={{ color: WF.muted }}>
+                            West Bank offers personal banking with real human oversight. Every transaction verified,
+                            every account protected. Open your account in minutes — no hidden fees, no surprises.
+                        </p>
 
-    window.addEventListener('resize', handleResize);
-    animate();
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+                        <div className="flex flex-col sm:flex-row gap-4 mb-12">
+                            <Link href="/register"
+                                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 hover:shadow-lg"
+                                style={{ background: WF.red, boxShadow: '0 4px 20px rgba(215,30,40,0.3)' }}>
+                                Open a Free Account
+                                <ArrowRight size={16} />
+                            </Link>
+                            <Link href="/login"
+                                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl font-bold text-sm border transition-all hover:shadow-sm"
+                                style={{ borderColor: WF.border, color: WF.black }}>
+                                Sign In
+                            </Link>
+                        </div>
 
-  return (
-    <main className="relative min-h-screen bg-[#050505] text-white overflow-hidden selection:bg-white selection:text-black">
+                        {/* Trust indicators */}
+                        <div className="flex flex-wrap gap-6">
+                            {[
+                                { label: 'FDIC Insured', sub: 'Up to $250,000' },
+                                { label: '256-bit Encryption', sub: 'Bank-grade security' },
+                                { label: '24/7 Support', sub: 'Always available' },
+                                { label: '$0 Monthly Fees', sub: 'No hidden charges' },
+                            ].map(({ label, sub }) => (
+                                <div key={label} className="flex items-center gap-2">
+                                    <CheckCircle size={14} style={{ color: WF.red }} />
+                                    <div>
+                                        <p className="text-xs font-bold" style={{ color: WF.black }}>{label}</p>
+                                        <p className="text-[10px]" style={{ color: WF.muted }}>{sub}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
-      {/* Background: Subtle Global Network */}
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none opacity-30" />
+                    {/* Hero card mockup */}
+                    <div className="mt-16 relative max-w-sm">
+                        <div className="w-full rounded-2xl p-6 relative overflow-hidden"
+                            style={{
+                                background: 'linear-gradient(135deg, #B91C1C 0%, #7F1D1D 60%, #450A0A 100%)',
+                                boxShadow: '0 24px 48px rgba(183,28,28,0.4)',
+                                height: 200,
+                            }}>
+                            <div className="absolute top-0 right-0 w-40 h-40 rounded-full"
+                                style={{ background: 'rgba(255,205,65,0.1)', filter: 'blur(40px)' }} />
+                            <div className="flex justify-between items-start mb-8">
+                                <div>
+                                    <p className="text-[10px] font-bold tracking-widest mb-1"
+                                        style={{ color: 'rgba(255,255,255,0.5)' }}>WEST BANK</p>
+                                    <p className="text-xs font-mono" style={{ color: 'rgba(255,255,255,0.4)' }}>•••• •••• •••• 8308</p>
+                                </div>
+                                <div className="flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold"
+                                    style={{ background: 'rgba(255,205,65,0.15)', border: '1px solid rgba(255,205,65,0.3)', color: '#FFCD41' }}>
+                                    <Shield size={10} /> SECURE
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.45)' }}>Available Balance</p>
+                                <p className="font-display text-3xl font-bold text-white mt-1">$24,500.00</p>
+                            </div>
+                            <div className="absolute bottom-4 right-6 flex items-center gap-1">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#FFCD41' }} />
+                                <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>ACTIVE</span>
+                            </div>
+                        </div>
+                        {/* Floating stat */}
+                        <div className="absolute -bottom-4 -right-4 px-4 py-3 rounded-xl shadow-lg"
+                            style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
+                            <p className="text-[10px] font-bold" style={{ color: WF.muted }}>This Month</p>
+                            <p className="text-sm font-bold" style={{ color: '#12B76A' }}>+$3,240.00</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-      {/* Navigation */}
-      <nav className="relative z-10 flex justify-between items-center px-8 py-8 max-w-7xl mx-auto">
-        <div className={`text-sm font-bold tracking-widest text-white ${mono.className}`}>
-          Titan // CORE
-        </div>
-        <div className="flex gap-8 text-xs font-medium text-gray-400">
-          <Link href="/login" className="hover:text-white transition-colors">MEMBER LOGIN</Link>
-          <a href="#" className="hover:text-white transition-colors">OUR VAULT</a>
-        </div>
-      </nav>
-
-      {/* Hero Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-[70vh] px-4">
-
-        {/* Badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 mb-8 backdrop-blur-md"
-        >
-          <span className={`text-[10px] tracking-widest text-gray-300 ${mono.className}`}>
-            MANUAL BANKING STANDARD
-          </span>
-        </motion.div>
-
-        {/* Title */}
-        <h1 className={`text-5xl md:text-8xl font-medium tracking-tight text-center mb-8 ${inter.className}`}>
-          Banking,<br />
-          <span className="text-gray-500">Handled with Care.</span>
-        </h1>
-
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="max-w-xl text-center text-gray-400 text-lg leading-relaxed mb-12"
-        >
-          A private financial community where every deposit is verified by a human, not a bot.
-          <span className="text-white"> No frozen accounts. Just personal service.</span>
-        </motion.p>
-
-        {/* Access Input (Replaces Command Line) */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5 }}
-          className="w-full max-w-md"
-        >
-          <div
-            className={`relative group bg-[#0a0a0a] border border-white/10 rounded-full p-1.5 transition-all duration-300 ${isHovering ? 'border-white/30 shadow-lg shadow-white/5' : ''}`}
-            onMouseEnter={() => setIsHovering(true)}
-            onMouseLeave={() => setIsHovering(false)}
-          >
-            <div className="flex items-center px-4 py-3">
-              <input
-                type="text"
-                value={accessCode}
-                onChange={(e) => setAccessCode(e.target.value)}
-                placeholder="Enter Access Code..."
-                className={`w-full bg-transparent border-none outline-none text-white placeholder-gray-600 text-sm ml-2 ${inter.className}`}
-              />
-              <button className="bg-white hover:bg-gray-200 text-black rounded-full px-6 py-2 text-xs font-bold transition-colors">
-                JOIN
-              </button>
+            {/* ═══════════════════════════════════════════════════
+                TRUST STRIP
+            ═══════════════════════════════════════════════════ */}
+            <div className="border-y py-4 px-6" style={{ borderColor: WF.border, background: WF.surface }}>
+                <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-8">
+                    {['FDIC Member', 'AES-256 Encrypted', 'Equal Housing Lender', 'Visa Certified Network', 'SOC 2 Compliant'].map(t => (
+                        <span key={t} className="text-[11px] font-bold tracking-wider" style={{ color: WF.muted }}>{t}</span>
+                    ))}
+                </div>
             </div>
-          </div>
 
-          <div className="flex justify-center mt-4 gap-6 text-[10px] text-gray-500 font-mono">
-            <span>•  Invite Only</span>
-            <span>•  Manual Review</span>
-          </div>
-        </motion.div>
-      </div>
+            {/* ═══════════════════════════════════════════════════
+                FEATURES
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-20 px-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-14">
+                        <p className="text-xs font-bold tracking-[3px] uppercase mb-3" style={{ color: WF.red }}>Why West Bank</p>
+                        <h2 className="font-display text-3xl md:text-4xl font-bold mb-4" style={{ color: WF.black }}>
+                            The smarter way to bank
+                        </h2>
+                        <div className="w-12 h-0.5 mx-auto rounded" style={{ background: WF.gold }} />
+                    </div>
 
-      {/* Feature Footer */}
-      <div className="absolute bottom-0 w-full border-t border-white/5 bg-[#050505]/80 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/5">
-          {[
-            { icon: Users, title: "Community Driven", desc: "Built for fans, run by people." },
-            { icon: Shield, title: "Manual Security", desc: "Every transaction is personally checked." },
-            { icon: Globe, title: "Global Access", desc: "Your funds, available anywhere." }
-          ].map((feature, i) => (
-            <div key={i} className="p-8 flex items-center gap-4 group hover:bg-white/5 transition-colors">
-              <feature.icon className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
-              <div>
-                <h3 className={`text-sm font-bold text-white mb-1 ${inter.className}`}>{feature.title}</h3>
-                <p className="text-xs text-gray-500">{feature.desc}</p>
-              </div>
-            </div>
-          ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {[
+                            {
+                                icon: Shield,
+                                title: 'Human-Verified',
+                                desc: 'Every deposit and withdrawal is reviewed by our team — no bots, no frozen accounts.',
+                                color: WF.red,
+                            },
+                            {
+                                icon: Lock,
+                                title: 'Bank-Grade Security',
+                                desc: '256-bit encryption, multi-factor authentication, and real-time fraud monitoring.',
+                                color: '#7F56D9',
+                            },
+                            {
+                                icon: Clock,
+                                title: '24/7 Support',
+                                desc: 'Live chat, email support, and dedicated agents available around the clock.',
+                                color: '#12B76A',
+                            },
+                            {
+                                icon: TrendingUp,
+                                title: 'Grow Your Money',
+                                desc: 'High-yield savings, investment portfolios, loans, and grants — all in one place.',
+                                color: WF.gold === '#FFCD41' ? '#C9941A' : WF.gold,
+                            },
+                        ].map(({ icon: Icon, title, desc, color }) => (
+                            <div key={title} className="p-6 rounded-2xl transition-all hover:shadow-md group cursor-default"
+                                style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
+                                <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4 transition-colors"
+                                    style={{ background: `${color}14` }}>
+                                    <Icon size={22} style={{ color }} />
+                                </div>
+                                <h3 className="font-display text-base font-bold mb-2" style={{ color: WF.black }}>{title}</h3>
+                                <p className="text-sm leading-relaxed" style={{ color: WF.muted }}>{desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
+                HOW IT WORKS
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-20 px-6" style={{ background: WF.surface }}>
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-14">
+                        <p className="text-xs font-bold tracking-[3px] uppercase mb-3" style={{ color: WF.red }}>Get Started</p>
+                        <h2 className="font-display text-3xl md:text-4xl font-bold mb-4" style={{ color: WF.black }}>
+                            Open an account in 3 steps
+                        </h2>
+                        <div className="w-12 h-0.5 mx-auto rounded" style={{ background: WF.gold }} />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+                        {/* Connector line (desktop) */}
+                        <div className="hidden md:block absolute top-10 left-1/6 right-1/6 h-px"
+                            style={{ background: `linear-gradient(90deg, transparent, ${WF.border}, transparent)` }} />
+
+                        {[
+                            { step: '01', title: 'Create Your Account', desc: 'Fill out a quick registration form with your name, email, and password. Takes under 2 minutes.' },
+                            { step: '02', title: 'Verify Your Identity', desc: 'Our team manually reviews your details to ensure your account is fully protected and compliant.' },
+                            { step: '03', title: 'Start Banking', desc: 'Make deposits, apply for loans, manage transfers — all from your secure dashboard.' },
+                        ].map(({ step, title, desc }) => (
+                            <div key={step} className="text-center relative">
+                                <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center font-display text-2xl font-bold text-white"
+                                    style={{ background: WF.red, boxShadow: '0 8px 24px rgba(215,30,40,0.3)' }}>
+                                    {step}
+                                </div>
+                                <h3 className="font-display text-lg font-bold mb-3" style={{ color: WF.black }}>{title}</h3>
+                                <p className="text-sm leading-relaxed" style={{ color: WF.muted }}>{desc}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="text-center mt-12">
+                        <Link href="/register"
+                            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90"
+                            style={{ background: WF.red }}>
+                            Get Started Now <ArrowRight size={16} />
+                        </Link>
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
+                ACCOUNT TYPES
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-20 px-6">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-14">
+                        <p className="text-xs font-bold tracking-[3px] uppercase mb-3" style={{ color: WF.red }}>Our Products</p>
+                        <h2 className="font-display text-3xl md:text-4xl font-bold mb-4" style={{ color: WF.black }}>
+                            Everything you need, nothing you don't
+                        </h2>
+                        <div className="w-12 h-0.5 mx-auto rounded" style={{ background: WF.gold }} />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[
+                            {
+                                icon: CreditCard, color: WF.red,
+                                title: 'Checking Account',
+                                desc: 'Zero monthly fees, instant deposits, and real-time balance updates.',
+                                perks: ['No minimum balance', 'Free debit card', 'Instant transfers'],
+                            },
+                            {
+                                icon: PiggyBank, color: '#12B76A',
+                                title: 'Savings Account',
+                                desc: 'Earn competitive interest on your savings with no lock-in periods.',
+                                perks: ['High-yield interest', 'FDIC insured', 'No withdrawal limits'],
+                                featured: true,
+                            },
+                            {
+                                icon: BarChart3, color: '#7F56D9',
+                                title: 'Investment Account',
+                                desc: 'Grow your wealth with expert-managed portfolios starting from $500.',
+                                perks: ['Managed portfolios', 'Real-time tracking', 'Tax reporting'],
+                            },
+                            {
+                                icon: Landmark, color: '#C9941A',
+                                title: 'Business Banking',
+                                desc: 'Full-featured business accounts with payroll, invoicing, and more.',
+                                perks: ['Multi-user access', 'Business debit card', 'Expense tracking'],
+                            },
+                            {
+                                icon: Globe, color: WF.red,
+                                title: 'International Transfers',
+                                desc: 'Send and receive wire transfers globally with transparent fees.',
+                                perks: ['150+ countries', 'Live exchange rates', 'SWIFT / SEPA'],
+                            },
+                            {
+                                icon: Smartphone, color: '#0EA5E9',
+                                title: 'Mobile Banking',
+                                desc: 'Full banking experience from your phone, with biometric login.',
+                                perks: ['Mobile deposits', 'Push notifications', 'Face ID / Touch ID'],
+                            },
+                        ].map(({ icon: Icon, color, title, desc, perks, featured }) => (
+                            <div key={title}
+                                className={`p-6 rounded-2xl transition-all hover:shadow-md ${featured ? 'ring-2' : ''}`}
+                                style={{
+                                    background: featured ? `linear-gradient(135deg, ${WF.red}08, ${WF.red}04)` : WF.surface,
+                                    border: `1px solid ${featured ? WF.red + '30' : WF.border}`,
+                                    ...(featured ? { ringColor: WF.red } : {}),
+                                }}>
+                                {featured && (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold mb-4"
+                                        style={{ background: WF.red, color: 'white' }}>
+                                        <Star size={9} /> Most Popular
+                                    </div>
+                                )}
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                                    style={{ background: `${color}14` }}>
+                                    <Icon size={20} style={{ color }} />
+                                </div>
+                                <h3 className="font-display text-base font-bold mb-2" style={{ color: WF.black }}>{title}</h3>
+                                <p className="text-sm leading-relaxed mb-4" style={{ color: WF.muted }}>{desc}</p>
+                                <ul className="space-y-1.5 mb-5">
+                                    {perks.map(p => (
+                                        <li key={p} className="flex items-center gap-2 text-xs" style={{ color: WF.muted }}>
+                                            <CheckCircle size={12} style={{ color: WF.red }} />
+                                            {p}
+                                        </li>
+                                    ))}
+                                </ul>
+                                <Link href="/register"
+                                    className="flex items-center gap-1 text-xs font-bold transition-colors hover:gap-2"
+                                    style={{ color: WF.red }}>
+                                    Open Account <ChevronRight size={14} />
+                                </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
+                TESTIMONIALS
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-20 px-6" style={{ background: WF.light }}>
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-14">
+                        <p className="text-xs font-bold tracking-[3px] uppercase mb-3" style={{ color: WF.red }}>Reviews</p>
+                        <h2 className="font-display text-3xl md:text-4xl font-bold" style={{ color: WF.black }}>
+                            Trusted by thousands
+                        </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            { name: 'Sarah M.', role: 'Small Business Owner', text: 'West Bank approved my business loan in 48 hours. The human review process made me feel actually seen, not just a credit score.' },
+                            { name: 'James T.', role: 'Freelancer', text: "I switched from a big bank after my account was frozen for 2 weeks. West Bank's team resolved my deposit in the same day." },
+                            { name: 'Priya K.', role: 'Graduate Student', text: 'No monthly fees and real 24/7 support — I finally found a bank that treats students like real customers.' },
+                        ].map(({ name, role, text }) => (
+                            <div key={name} className="p-6 rounded-2xl" style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
+                                <div className="flex gap-0.5 mb-4">
+                                    {Array(5).fill(0).map((_, i) => (
+                                        <Star key={i} size={14} fill={WF.gold} style={{ color: WF.gold }} />
+                                    ))}
+                                </div>
+                                <p className="text-sm leading-relaxed mb-5" style={{ color: WF.muted }}>"{text}"</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                                        style={{ background: WF.red }}>
+                                        {name[0]}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold" style={{ color: WF.black }}>{name}</p>
+                                        <p className="text-[11px]" style={{ color: WF.muted }}>{role}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
+                CTA BANNER
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-20 px-6 text-white relative overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, #B91C1C 0%, #7F1D1D 60%, #450A0A 100%)' }}>
+                <div className="absolute top-0 right-0 w-80 h-80 rounded-full"
+                    style={{ background: 'rgba(255,205,65,0.08)', filter: 'blur(80px)' }} />
+                <div className="max-w-4xl mx-auto text-center relative z-10">
+                    <h2 className="font-display text-3xl md:text-5xl font-bold mb-4">
+                        Ready to bank smarter?
+                    </h2>
+                    <p className="text-base mb-10 max-w-xl mx-auto" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                        Join thousands of members who trust West Bank with their finances. Open your account in minutes — no paperwork, no branch visits.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Link href="/register"
+                            className="px-8 py-4 rounded-xl font-bold text-sm transition-all hover:opacity-90"
+                            style={{ background: WF.gold, color: WF.black }}>
+                            Open a Free Account
+                        </Link>
+                        <Link href="/login"
+                            className="px-8 py-4 rounded-xl font-bold text-sm border transition-all hover:bg-white/10"
+                            style={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white' }}>
+                            Sign In to Dashboard
+                        </Link>
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
+                FOOTER
+            ═══════════════════════════════════════════════════ */}
+            <footer className="py-16 px-6" style={{ background: WF.black, color: 'rgba(255,255,255,0.6)' }}>
+                <div className="max-w-7xl mx-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-10 mb-12">
+                        {/* Brand */}
+                        <div className="md:col-span-2">
+                            <div className="flex items-center gap-1.5 mb-4">
+                                <span className="font-display text-xl font-bold italic" style={{ color: WF.red }}>West</span>
+                                <span className="font-display text-xl font-bold text-white">Bank</span>
+                            </div>
+                            <p className="text-sm leading-relaxed max-w-xs">
+                                Private banking with a human touch. FDIC insured, zero monthly fees, and real 24/7 support.
+                            </p>
+                            <div className="flex gap-3 mt-6">
+                                {[Phone, Mail, MapPin].map((Icon, i) => (
+                                    <div key={i} className="w-8 h-8 rounded-lg flex items-center justify-center"
+                                        style={{ background: 'rgba(255,255,255,0.08)' }}>
+                                        <Icon size={14} style={{ color: 'rgba(255,255,255,0.5)' }} />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Links */}
+                        {[
+                            { heading: 'Personal', links: ['Checking', 'Savings', 'Loans', 'Mortgages', 'Credit Cards'] },
+                            { heading: 'Business', links: ['Business Checking', 'Business Loans', 'Payroll', 'Merchant Services'] },
+                            { heading: 'Company', links: ['About Us', 'Careers', 'Press', 'Contact', 'Privacy Policy'] },
+                        ].map(({ heading, links }) => (
+                            <div key={heading}>
+                                <p className="text-xs font-bold tracking-widest uppercase mb-4 text-white">{heading}</p>
+                                <ul className="space-y-2.5">
+                                    {links.map(l => (
+                                        <li key={l}><a href="#" className="text-sm hover:text-white transition-colors">{l}</a></li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="pt-8 border-t flex flex-col md:flex-row items-center justify-between gap-4"
+                        style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+                        <p className="text-xs">© {new Date().getFullYear()} West Bank, N.A. All rights reserved.</p>
+                        <div className="flex flex-wrap gap-6 text-xs">
+                            {['Member FDIC', 'Equal Housing Lender', 'Terms of Service', 'Privacy Policy', 'Accessibility'].map(t => (
+                                <a key={t} href="#" className="hover:text-white transition-colors">{t}</a>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </footer>
         </div>
-      </div>
-
-      <ManualVerificationSection />
-
-    </main>
-  );
+    );
 }

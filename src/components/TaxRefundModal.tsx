@@ -4,17 +4,20 @@ import React, { useState, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    X, Upload, FileText, CheckCircle, ShieldCheck,
-    ChevronRight, ChevronLeft, Landmark, DollarSign, Loader2, AlertCircle
+    X, CheckCircle, ChevronRight, ChevronLeft,
+    Receipt, User, Banknote, Calculator, Loader2, Check, FileText
 } from 'lucide-react';
-import { Manrope } from 'next/font/google';
-
-const manrope = Manrope({ subsets: ['latin'] });
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+const WF = {
+    red: '#D71E28', bg: '#FAF8F5', surface: '#FFFFFF',
+    border: '#E8E2DA', muted: '#6B6560', black: '#1A1A1A', gold: '#FFCD41',
+    purple: '#7F56D9',
+};
 
 interface TaxRefundModalProps {
     isOpen: boolean;
@@ -22,59 +25,132 @@ interface TaxRefundModalProps {
     userId: string;
 }
 
+function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+    return (
+        <label className="text-xs font-bold block mb-1.5" style={{ color: WF.black }}>
+            {children}{required && <span className="ml-0.5" style={{ color: WF.red }}>*</span>}
+        </label>
+    );
+}
+
+function WFInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+    return (
+        <input {...props}
+            className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+            style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.black }}
+        />
+    );
+}
+
+function WFSelect({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+    return (
+        <select {...props}
+            className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all appearance-none"
+            style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.black }}>
+            {children}
+        </select>
+    );
+}
+
+function Hint({ children }: { children: React.ReactNode }) {
+    return <p className="text-[10px] mt-1.5" style={{ color: WF.muted }}>{children}</p>;
+}
+
+function InfoBox({ icon: Icon, title, body, accent = WF.purple }: {
+    icon: any; title: string; body: string; accent?: string;
+}) {
+    return (
+        <div className="flex items-start gap-3 p-4 rounded-2xl"
+            style={{ background: `${accent}0D`, border: `1px solid ${accent}20` }}>
+            <Icon size={16} style={{ color: accent, flexShrink: 0, marginTop: 1 }} />
+            <div>
+                <p className="text-xs font-bold" style={{ color: WF.black }}>{title}</p>
+                <p className="text-xs mt-0.5 leading-relaxed" style={{ color: WF.muted }}>{body}</p>
+            </div>
+        </div>
+    );
+}
+
+function StepBar({ total, current }: { total: number; current: number }) {
+    return (
+        <div className="flex items-center justify-center gap-2 mb-7">
+            {Array.from({ length: total }, (_, i) => i + 1).map(s => (
+                <React.Fragment key={s}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+                        style={{
+                            background: current > s ? WF.red : current === s ? WF.red : WF.bg,
+                            color: current >= s ? '#fff' : WF.muted,
+                            border: current < s ? `1.5px solid ${WF.border}` : 'none',
+                        }}>
+                        {current > s ? <Check size={13} /> : s}
+                    </div>
+                    {s < total && (
+                        <div className="w-10 h-0.5 rounded-full transition-all"
+                            style={{ background: current > s ? WF.red : WF.border }} />
+                    )}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+}
+
+function FileZone({ label, files, setFiles, accept }: {
+    label: string; files: File[]; setFiles: (f: File[]) => void; accept: string;
+}) {
+    const ref = useRef<HTMLInputElement>(null);
+    return (
+        <div>
+            <Label required>{label}</Label>
+            <div onClick={() => ref.current?.click()}
+                className="rounded-xl p-5 flex flex-col items-center gap-2 cursor-pointer transition-all"
+                style={{
+                    border: `2px dashed ${files.length ? WF.red : WF.border}`,
+                    background: files.length ? 'rgba(215,30,40,0.04)' : WF.surface,
+                }}>
+                <FileText size={18} style={{ color: files.length ? WF.red : WF.muted }} />
+                <span className="text-xs font-bold" style={{ color: WF.black }}>
+                    {files.length > 0 ? `${files.length} file(s) selected` : 'Click to upload'}
+                </span>
+                <span className="text-[10px]" style={{ color: WF.muted }}>PDF, JPG, PNG accepted</span>
+                <input ref={ref} type="file" className="hidden" accept={accept} multiple
+                    onChange={e => e.target.files && setFiles(Array.from(e.target.files))} />
+            </div>
+            {files.map((f, i) => (
+                <div key={i} className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl"
+                    style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                    <Check size={11} style={{ color: '#16A34A' }} />
+                    <span className="text-xs truncate" style={{ color: WF.black }}>{f.name}</span>
+                    <button className="ml-auto text-xs" style={{ color: WF.muted }}
+                        onClick={e => { e.stopPropagation(); setFiles(files.filter((_, j) => j !== i)); }}>✕</button>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundModalProps) {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    // Form Data
     const [formData, setFormData] = useState({
-        ssn: '',
-        routing: '',
-        account: '',
-        agi: ''
+        fullName: '', ssn: '', filingStatus: '', routingNumber: '', accountNumber: '',
+        taxYear: String(new Date().getFullYear() - 1),
+        agi: '', federalWithheld: '', stateWithheld: '', deductions: '',
     });
 
-    // Files State
     const [incomeFiles, setIncomeFiles] = useState<File[]>([]);
-    const [deductionFiles, setDeductionFiles] = useState<File[]>([]);
 
-    // Refs for file inputs
-    const incomeInputRef = useRef<HTMLInputElement>(null);
-    const deductionInputRef = useRef<HTMLInputElement>(null);
+    const patch = (k: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+        setFormData(prev => ({ ...prev, [k]: e.target.value }));
 
-    // --- VALIDATION LOGIC ---
     const isStepValid = () => {
         switch (step) {
-            case 1: // Identity & Banking
-                return (
-                    formData.ssn.length >= 9 &&
-                    formData.routing.length >= 9 &&
-                    formData.account.length >= 4
-                );
-            case 2: // Proof of Income
-                return incomeFiles.length > 0; // Must upload at least 1 doc
-            case 3: // AGI & Final Review
-                return formData.agi.length > 0; // Must enter prior year AGI
-            default:
-                return false;
-        }
-    };
-
-    // --- HANDLERS ---
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'INCOME' | 'DEDUCTION') => {
-        if (e.target.files && e.target.files.length > 0) {
-            const newFiles = Array.from(e.target.files);
-            if (type === 'INCOME') setIncomeFiles([...incomeFiles, ...newFiles]);
-            else setDeductionFiles([...deductionFiles, ...newFiles]);
-        }
-    };
-
-    const removeFile = (index: number, type: 'INCOME' | 'DEDUCTION') => {
-        if (type === 'INCOME') {
-            setIncomeFiles(incomeFiles.filter((_, i) => i !== index));
-        } else {
-            setDeductionFiles(deductionFiles.filter((_, i) => i !== index));
+            case 1: return formData.fullName.length > 0 && formData.ssn.length >= 9 && formData.filingStatus.length > 0
+                && formData.routingNumber.length === 9 && formData.accountNumber.length >= 6;
+            case 2: return incomeFiles.length > 0;
+            case 3: return formData.agi.length > 0 && formData.federalWithheld.length > 0;
+            default: return false;
         }
     };
 
@@ -82,293 +158,247 @@ export default function TaxRefundModal({ isOpen, onClose, userId }: TaxRefundMod
         if (!isStepValid()) return;
         setLoading(true);
 
-        // 1. Upload Files
-        const allFiles = [...incomeFiles, ...deductionFiles];
-
-        // Simulate upload delay for effect (or real upload)
-        for (const file of allFiles) {
-            const fileName = `${userId}/${Date.now()}_${file.name}`;
-            await supabase.storage.from('tax-documents').upload(fileName, file);
+        const docUrls: string[] = [];
+        for (const file of incomeFiles) {
+            const name = `${userId}/tax_${Date.now()}_${file.name}`;
+            await supabase.storage.from('tax-documents').upload(name, file);
+            docUrls.push(supabase.storage.from('tax-documents').getPublicUrl(name).data.publicUrl);
         }
 
-        // 2. Save Data
-        const { error: dbError } = await supabase.from('tax_refunds').insert([{
-            user_id: userId,
-            ssn_tin: formData.ssn,
-            routing_number: formData.routing,
-            account_number: formData.account,
-            prior_year_agi: parseFloat(formData.agi || '0'),
-            status: 'PENDING_REVIEW'
+        const refundEstimate = (parseFloat(formData.federalWithheld || '0') + parseFloat(formData.stateWithheld || '0'))
+            - parseFloat(formData.agi || '0') * 0.12;
+
+        const { error } = await supabase.from('applications').insert([{
+            user_id: userId, type: 'TAX_REFUND', status: 'PENDING',
+            requested_amount: Math.max(0, refundEstimate),
+            details: {
+                fullName: formData.fullName,
+                ssn: formData.ssn.replace(/\d(?=\d{4})/g, '*'),
+                filingStatus: formData.filingStatus,
+                taxYear: formData.taxYear,
+                routingNumber: formData.routingNumber,
+                accountNumber: formData.accountNumber.slice(-4).padStart(formData.accountNumber.length, '*'),
+                agi: formData.agi,
+                federalWithheld: formData.federalWithheld,
+                stateWithheld: formData.stateWithheld,
+                deductions: formData.deductions,
+                incomeDocuments: docUrls,
+            },
         }]);
 
         setLoading(false);
-
-        if (dbError) {
-            alert('Submission failed. Please try again.');
-        } else {
-            setSuccess(true);
-        }
+        if (error) alert('Submission failed. Please try again.');
+        else setSuccess(true);
     };
 
     if (!isOpen) return null;
 
+    const stepLabels = ['Identity & Banking', 'Proof of Income', 'AGI & Deductions'];
+    const filingOptions = ['Single', 'Married Filing Jointly', 'Married Filing Separately', 'Head of Household', 'Qualifying Widow(er)'];
+
     return (
         <AnimatePresence>
-            <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 ${manrope.className}`}>
+            <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 font-sans">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={onClose} className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-                {/* Backdrop */}
                 <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={onClose}
-                    className="absolute inset-0 bg-[#0B1C33]/60 backdrop-blur-sm"
-                />
-
-                {/* Modal Window */}
-                <motion.div
-                    initial={{ scale: 0.95, opacity: 0, y: 20 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                    className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-                >
+                    initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: '100%', opacity: 0 }}
+                    transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                    className="relative w-full max-w-2xl md:rounded-3xl rounded-t-3xl shadow-2xl flex flex-col overflow-hidden"
+                    style={{ background: WF.bg, maxHeight: '92dvh' }}>
 
                     {/* Header */}
-                    <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-[#F8FAFC]">
-                        <div>
-                            <h2 className="text-xl font-bold text-[#0B1C33] flex items-center gap-2">
-                                <FileText className="text-[#1170FF]" size={24} />
-                                Tax Refund Filing
-                            </h2>
-                            <p className="text-xs text-slate-500 mt-1">Securely submit your documents for processing.</p>
+                    <div className="px-6 pt-6 pb-4 flex items-center justify-between flex-shrink-0"
+                        style={{ background: WF.surface, borderBottom: `1px solid ${WF.border}` }}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center"
+                                style={{ background: 'rgba(127,86,217,0.08)' }}>
+                                <Receipt size={18} style={{ color: WF.purple }} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-[2px]" style={{ color: WF.muted }}>
+                                    {stepLabels[step - 1]}
+                                </p>
+                                <h2 className="font-display text-xl font-bold" style={{ color: WF.black }}>
+                                    Tax Refund Claim
+                                </h2>
+                            </div>
                         </div>
-                        <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                            <X size={20} className="text-slate-400" />
+                        <button onClick={onClose}
+                            className="w-9 h-9 rounded-full flex items-center justify-center"
+                            style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                            <X size={16} style={{ color: WF.muted }} />
                         </button>
                     </div>
 
-                    {/* Body Content */}
-                    <div className="flex-1 overflow-y-auto p-8">
+                    <div className="h-0.5 w-full flex-shrink-0" style={{ background: WF.border }}>
+                        <div className="h-full transition-all duration-500"
+                            style={{ width: `${(step / 3) * 100}%`, background: WF.red }} />
+                    </div>
 
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto p-6">
                         {success ? (
-                            <div className="flex flex-col items-center justify-center py-10 text-center">
-                                <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center mb-6 border border-green-100">
-                                    <CheckCircle size={48} className="text-[#12B76A]" />
+                            <div className="flex flex-col items-center text-center py-10 gap-4">
+                                <div className="w-20 h-20 rounded-full flex items-center justify-center"
+                                    style={{ background: 'rgba(127,86,217,0.1)' }}>
+                                    <CheckCircle size={40} style={{ color: WF.purple }} />
                                 </div>
-                                <h3 className="text-2xl font-bold text-[#0B1C33] mb-2">Filing Submitted!</h3>
-                                <p className="text-sm text-slate-500 max-w-md leading-relaxed mb-8">
-                                    Your tax refund request has been securely transmitted. Our tax specialists will review your documents (W-2s, 1099s) and update your status shortly.
+                                <h3 className="font-display text-2xl font-bold" style={{ color: WF.black }}>Claim Submitted!</h3>
+                                <p className="text-sm max-w-xs leading-relaxed" style={{ color: WF.muted }}>
+                                    Your tax refund claim for <strong style={{ color: WF.black }}>FY {formData.taxYear}</strong> has been submitted.
+                                    Refunds are typically processed within 5–10 business days.
                                 </p>
-                                <button onClick={onClose} className="px-8 py-3 bg-[#0B1C33] text-white font-bold rounded-xl hover:bg-black transition-all">
+                                <button onClick={onClose}
+                                    className="mt-4 w-full max-w-xs py-4 rounded-2xl text-white font-bold transition-all hover:opacity-90"
+                                    style={{ background: WF.black }}>
                                     Return to Dashboard
                                 </button>
                             </div>
                         ) : (
                             <>
-                                {/* Progress Steps */}
-                                <div className="flex items-center justify-center mb-8">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= 1 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>1</div>
-                                    <div className={`w-16 h-1 transition-colors ${step >= 2 ? 'bg-[#1170FF]' : 'bg-slate-100'}`}></div>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= 2 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>2</div>
-                                    <div className={`w-16 h-1 transition-colors ${step >= 3 ? 'bg-[#1170FF]' : 'bg-slate-100'}`}></div>
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= 3 ? 'bg-[#1170FF] text-white' : 'bg-slate-100 text-slate-400'}`}>3</div>
-                                </div>
+                                <StepBar total={3} current={step} />
 
-                                {/* STEP 1: IDENTITY & BANKING */}
+                                {/* Step 1 */}
                                 {step === 1 && (
-                                    <div className="space-y-6">
-                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
-                                            <ShieldCheck className="text-[#1170FF] mt-0.5" size={20} />
-                                            <div>
-                                                <h4 className="text-sm font-bold text-[#0B1C33]">Identity Verification</h4>
-                                                <p className="text-xs text-slate-600 mt-1">Please provide your TIN, SSN, or ITIN for you and any dependents.</p>
-                                            </div>
-                                        </div>
-
+                                    <div className="space-y-5">
+                                        <InfoBox icon={User} title="Identity & Direct Deposit"
+                                            body="Provide your legal name, SSN, and bank account for refund deposit." />
                                         <div>
-                                            <label className="block text-xs font-bold text-[#0B1C33] mb-2">Taxpayer ID (SSN / TIN / ITIN) <span className="text-red-500">*</span></label>
-                                            <input
-                                                type="text"
-                                                placeholder="XXX-XX-XXXX"
-                                                value={formData.ssn}
-                                                onChange={(e) => setFormData({ ...formData, ssn: e.target.value })}
-                                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-[#1170FF] focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                                            />
+                                            <Label required>Legal Full Name</Label>
+                                            <WFInput type="text" placeholder="As shown on tax return" value={formData.fullName} onChange={patch('fullName')} />
                                         </div>
-
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-xs font-bold text-[#0B1C33] mb-2">Routing Number <span className="text-red-500">*</span></label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="9 Digits"
-                                                    value={formData.routing}
-                                                    onChange={(e) => setFormData({ ...formData, routing: e.target.value })}
-                                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-[#1170FF] focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                                                />
+                                                <Label required>Social Security Number</Label>
+                                                <WFInput type="password" placeholder="XXX-XX-XXXX" value={formData.ssn} onChange={patch('ssn')} />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-bold text-[#0B1C33] mb-2">Account Number <span className="text-red-500">*</span></label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Account #"
-                                                    value={formData.account}
-                                                    onChange={(e) => setFormData({ ...formData, account: e.target.value })}
-                                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-[#1170FF] focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                                                />
+                                                <Label required>Tax Year</Label>
+                                                <WFInput type="number" min="2000" max={new Date().getFullYear()} value={formData.taxYear} onChange={patch('taxYear')} />
                                             </div>
+                                        </div>
+                                        <div>
+                                            <Label required>Filing Status</Label>
+                                            <WFSelect value={formData.filingStatus} onChange={patch('filingStatus')}>
+                                                <option value="">Select status…</option>
+                                                {filingOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                                            </WFSelect>
+                                        </div>
+                                        <div className="p-4 rounded-2xl space-y-4"
+                                            style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
+                                            <p className="text-xs font-bold flex items-center gap-1.5" style={{ color: WF.black }}>
+                                                <Banknote size={12} style={{ color: WF.purple }} />
+                                                Direct Deposit Details
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <Label required>Routing Number</Label>
+                                                    <WFInput type="text" placeholder="9 digits" maxLength={9} value={formData.routingNumber} onChange={patch('routingNumber')} />
+                                                </div>
+                                                <div>
+                                                    <Label required>Account Number</Label>
+                                                    <WFInput type="text" placeholder="Account number" value={formData.accountNumber} onChange={patch('accountNumber')} />
+                                                </div>
+                                            </div>
+                                            <Hint>Refund will be deposited directly into this account.</Hint>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* STEP 2: PROOF OF INCOME */}
+                                {/* Step 2 */}
                                 {step === 2 && (
-                                    <div className="space-y-6">
-                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                            <h4 className="text-sm font-bold text-[#0B1C33] mb-2">Proof of Income Documents <span className="text-red-500">*</span></h4>
-                                            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-                                                Upload <strong>W-2 Forms</strong> (Wages), <strong>1099 Forms</strong> (Freelance, Interest, Dividends), or <strong>Bank Statements</strong> showing business income.
-                                            </p>
-
-                                            {/* Upload Area */}
-                                            <div
-                                                onClick={() => incomeInputRef.current?.click()}
-                                                className="border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-[#1170FF] hover:bg-blue-50 transition-all group"
-                                            >
-                                                <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                                                    <Upload size={20} className="text-[#1170FF]" />
-                                                </div>
-                                                <span className="text-xs font-bold text-[#0B1C33]">Click to Upload Documents</span>
-                                                <span className="text-[10px] text-slate-400 mt-1">PDF, JPG, PNG allowed</span>
-                                                <input
-                                                    type="file"
-                                                    multiple
-                                                    className="hidden"
-                                                    ref={incomeInputRef}
-                                                    onChange={(e) => handleFileChange(e, 'INCOME')}
-                                                    accept=".pdf,image/*"
-                                                />
-                                            </div>
-
-                                            {/* File List */}
-                                            {incomeFiles.length > 0 && (
-                                                <div className="mt-4 space-y-2">
-                                                    {incomeFiles.map((file, idx) => (
-                                                        <div key={idx} className="flex justify-between items-center bg-white p-3 border border-slate-100 rounded-lg shadow-sm">
-                                                            <div className="flex items-center gap-2 overflow-hidden">
-                                                                <FileText size={16} className="text-slate-400 flex-shrink-0" />
-                                                                <span className="text-xs text-[#0B1C33] truncate">{file.name}</span>
-                                                            </div>
-                                                            <button onClick={() => removeFile(idx, 'INCOME')} className="text-red-400 hover:text-red-600">
-                                                                <X size={14} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
+                                    <div className="space-y-5">
+                                        <InfoBox icon={FileText} title="Proof of Income"
+                                            body="Upload your W-2, 1099, or other income documents for the selected tax year."
+                                            accent="#0369A1" />
+                                        <FileZone
+                                            label="Income Documents (W-2 / 1099)"
+                                            files={incomeFiles}
+                                            setFiles={setIncomeFiles}
+                                            accept=".pdf,.jpg,.jpeg,.png"
+                                        />
+                                        <div className="p-4 rounded-2xl text-xs leading-relaxed"
+                                            style={{ background: 'rgba(215,30,40,0.04)', border: `1px solid rgba(215,30,40,0.1)`, color: '#991B1B' }}>
+                                            <strong>Accepted:</strong> W-2, 1099-NEC, 1099-MISC, 1099-K, 1099-INT, SSA-1099.
+                                            Documents must be for tax year <strong>{formData.taxYear}</strong>.
                                         </div>
-                                        {incomeFiles.length === 0 && (
-                                            <p className="text-[10px] text-red-500 flex items-center gap-1">
-                                                <AlertCircle size={12} /> At least one income document is required.
-                                            </p>
-                                        )}
                                     </div>
                                 )}
 
-                                {/* STEP 3: DEDUCTIONS & HISTORY */}
+                                {/* Step 3 */}
                                 {step === 3 && (
-                                    <div className="space-y-6">
-                                        {/* Prior Year AGI */}
+                                    <div className="space-y-5">
+                                        <InfoBox icon={Calculator} title="AGI & Deductions"
+                                            body="Enter your Adjusted Gross Income and total taxes withheld to calculate your refund estimate." />
                                         <div>
-                                            <label className="block text-xs font-bold text-[#0B1C33] mb-2 flex items-center gap-2">
-                                                <Landmark size={14} /> Prior Year Records <span className="text-red-500">*</span>
-                                            </label>
-                                            <div className="relative">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
-                                                <input
-                                                    type="number"
-                                                    placeholder="Last Year's AGI (Adjusted Gross Income)"
-                                                    value={formData.agi}
-                                                    onChange={(e) => setFormData({ ...formData, agi: e.target.value })}
-                                                    className="w-full pl-8 p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-[#1170FF] focus:ring-4 focus:ring-blue-50 outline-none transition-all"
-                                                />
-                                            </div>
-                                            <p className="text-[10px] text-slate-400 mt-2">Required for electronic filing verification.</p>
+                                            <Label required>Adjusted Gross Income (AGI) ($)</Label>
+                                            <WFInput type="number" placeholder="0.00" value={formData.agi} onChange={patch('agi')} />
+                                            <Hint>From Line 11 of Form 1040.</Hint>
                                         </div>
-
-                                        <hr className="border-slate-100" />
-
-                                        {/* Deductions Upload (Optional) */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-[#0B1C33] mb-2 flex items-center gap-2">
-                                                <DollarSign size={14} /> Deductions & Credits <span className="text-[10px] text-slate-400 font-normal">(Optional)</span>
-                                            </label>
-                                            <p className="text-xs text-slate-500 mb-3">Upload receipts for mortgage interest, childcare, or education expenses.</p>
-
-                                            <div
-                                                onClick={() => deductionInputRef.current?.click()}
-                                                className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-center justify-between cursor-pointer hover:border-[#1170FF] transition-all"
-                                            >
-                                                <span className="text-xs text-slate-600">
-                                                    {deductionFiles.length > 0 ? `${deductionFiles.length} files selected` : "Select Receipts..."}
-                                                </span>
-                                                <Upload size={16} className="text-slate-400" />
-                                                <input
-                                                    type="file"
-                                                    multiple
-                                                    className="hidden"
-                                                    ref={deductionInputRef}
-                                                    onChange={(e) => handleFileChange(e, 'DEDUCTION')}
-                                                    accept=".pdf,image/*"
-                                                />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label required>Federal Tax Withheld ($)</Label>
+                                                <WFInput type="number" placeholder="0.00" value={formData.federalWithheld} onChange={patch('federalWithheld')} />
+                                            </div>
+                                            <div>
+                                                <Label>State Tax Withheld ($)</Label>
+                                                <WFInput type="number" placeholder="0.00" value={formData.stateWithheld} onChange={patch('stateWithheld')} />
                                             </div>
                                         </div>
+                                        <div>
+                                            <Label>Additional Deductions ($)</Label>
+                                            <WFInput type="number" placeholder="0.00 (optional)" value={formData.deductions} onChange={patch('deductions')} />
+                                            <Hint>Mortgage interest, student loan interest, charitable contributions, etc.</Hint>
+                                        </div>
+
+                                        {/* Estimate preview */}
+                                        {formData.agi && formData.federalWithheld && (
+                                            <div className="p-4 rounded-2xl"
+                                                style={{ background: 'rgba(127,86,217,0.06)', border: `1px solid rgba(127,86,217,0.15)` }}>
+                                                <p className="text-[10px] font-bold uppercase tracking-[2px] mb-1" style={{ color: WF.purple }}>Estimated Refund</p>
+                                                <p className="font-display text-3xl font-bold" style={{ color: WF.black }}>
+                                                    ${Math.max(0, (parseFloat(formData.federalWithheld) + parseFloat(formData.stateWithheld || '0')) - parseFloat(formData.agi) * 0.12).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </p>
+                                                <p className="text-[10px] mt-1" style={{ color: WF.muted }}>Preliminary estimate only. Final amount determined by IRS processing.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </>
                         )}
                     </div>
 
-                    {/* Footer Navigation */}
+                    {/* Footer */}
                     {!success && (
-                        <div className="p-6 border-t border-slate-100 bg-white flex justify-between items-center">
+                        <div className="px-6 py-4 flex justify-between items-center flex-shrink-0"
+                            style={{ background: WF.surface, borderTop: `1px solid ${WF.border}` }}>
                             {step > 1 ? (
-                                <button
-                                    onClick={() => setStep(step - 1)}
-                                    className="flex items-center gap-2 text-slate-500 hover:text-[#0B1C33] text-sm font-bold transition-colors"
-                                >
+                                <button onClick={() => setStep(s => s - 1)}
+                                    className="flex items-center gap-1.5 text-sm font-bold"
+                                    style={{ color: WF.muted }}>
                                     <ChevronLeft size={16} /> Back
                                 </button>
-                            ) : (
-                                <div></div>
-                            )}
+                            ) : <div />}
 
                             {step < 3 ? (
-                                <button
-                                    onClick={() => setStep(step + 1)}
-                                    disabled={!isStepValid()} // Disable if current step is invalid
-                                    className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg ${isStepValid()
-                                            ? 'bg-[#1170FF] text-white hover:bg-blue-600 shadow-blue-200'
-                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                        }`}
-                                >
-                                    Next Step <ChevronRight size={16} />
+                                <button onClick={() => setStep(s => s + 1)} disabled={!isStepValid()}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 disabled:opacity-40"
+                                    style={{ background: isStepValid() ? WF.red : WF.border, color: isStepValid() ? '#fff' : WF.muted }}>
+                                    Next <ChevronRight size={15} />
                                 </button>
                             ) : (
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={!isStepValid() || loading}
-                                    className={`flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-lg ${isStepValid() && !loading
-                                            ? 'bg-[#0B1C33] text-white hover:bg-black'
-                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                                        }`}
-                                >
-                                    {loading ? <Loader2 size={16} className="animate-spin" /> : 'Submit Filing'}
+                                <button onClick={handleSubmit} disabled={!isStepValid() || loading}
+                                    className="flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 disabled:opacity-40"
+                                    style={{ background: WF.black, color: '#fff' }}>
+                                    {loading && <Loader2 size={15} className="animate-spin" />}
+                                    {loading ? 'Submitting…' : 'File Claim'}
                                 </button>
                             )}
                         </div>
                     )}
-
                 </motion.div>
             </div>
         </AnimatePresence>

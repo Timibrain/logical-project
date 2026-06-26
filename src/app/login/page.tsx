@@ -1,246 +1,223 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { JetBrains_Mono, Syncopate } from 'next/font/google';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation'; //
+import { Eye, EyeOff, Shield, Lock, ArrowLeft, Loader2 } from 'lucide-react';
 
-// --- FONTS ---
-const mono = JetBrains_Mono({ subsets: ['latin'] });
-const display = Syncopate({ weight: ['400', '700'], subsets: ['latin'] });
-
-// --- SUPABASE SETUP ---
-// Replace these with your actual Supabase project keys!
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// --- TYPES ---
-type BlobEntity = {
-    el: HTMLDivElement;
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    size: number;
+const WF = {
+    red: '#D71E28', redDark: '#A3151D', gold: '#FFCD41',
+    black: '#1A1A1A', bg: '#FAF8F5', surface: '#FFFFFF',
+    border: '#E8E2DA', muted: '#6B6560', light: '#F5F0EB',
 };
 
-export default function FerrofluidLogin() {
+export default function LoginPage() {
     const router = useRouter();
-    const containerRef = useRef<HTMLDivElement>(null);
-    const cursorRef = useRef<HTMLDivElement>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPw, setShowPw] = useState(false);
+    const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState('');
 
-
-    // --- PHYSICS ENGINE ---
-    useEffect(() => {
-        if (!containerRef.current) return;
-
-        const blobCount = 12;
-        const blobs: BlobEntity[] = [];
-        const container = containerRef.current;
-
-        // 1. Initialize Blobs
-        for (let i = 0; i < blobCount; i++) {
-            const div = document.createElement('div');
-            div.classList.add('ferro-blob');
-            const size = Math.random() * 200 + 150;
-            div.style.width = `${size}px`;
-            div.style.height = `${size}px`;
-
-            // Random start position
-            const x = Math.random() * window.innerWidth;
-            const y = Math.random() * window.innerHeight;
-
-            container.appendChild(div);
-
-            blobs.push({
-                el: div,
-                x,
-                y,
-                vx: (Math.random() - 0.5) * 1.5, // Velocity X
-                vy: (Math.random() - 0.5) * 1.5, // Velocity Y
-                size
-            });
-        }
-
-        // 2. Animation Loop
-        let animationFrameId: number;
-        const animate = () => {
-            blobs.forEach(b => {
-                b.x += b.vx;
-                b.y += b.vy;
-
-                // Bounce off walls (with buffer)
-                if (b.x < -200) b.x = window.innerWidth + 200;
-                if (b.x > window.innerWidth + 200) b.x = -200;
-                if (b.y < -200) b.y = window.innerHeight + 200;
-                if (b.y > window.innerHeight + 200) b.y = -200;
-
-                b.el.style.transform = `translate(${b.x}px, ${b.y}px)`;
-            });
-            animationFrameId = requestAnimationFrame(animate);
-        };
-        animate();
-
-        // 3. Mouse Interaction (Magnetic Effect)
-        const handleMouseMove = (e: MouseEvent) => {
-            if (cursorRef.current) {
-                cursorRef.current.style.transform = `translate3d(${e.clientX - 6}px, ${e.clientY - 6}px, 0)`;
-            }
-
-            blobs.forEach(b => {
-                const dx = e.clientX - b.x;
-                const dy = e.clientY - b.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                // Magnetic pull if close
-                if (dist < 400) {
-                    b.x += dx * 0.02;
-                    b.y += dy * 0.02;
-                }
-            });
-        };
-
-        window.addEventListener('mousemove', handleMouseMove);
-
-        // Cleanup
-        return () => {
-            cancelAnimationFrame(animationFrameId);
-            window.removeEventListener('mousemove', handleMouseMove);
-            if (container) container.innerHTML = ''; // Clear blobs
-        };
-    }, []);
-
-    // --- AUTH HANDLER ---
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
-        setError(null);
-
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
+        setError('');
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-            setError(error.message);
+            setError(error.message === 'Invalid login credentials'
+                ? 'Incorrect email or password. Please try again.'
+                : error.message);
         } else {
-            // Redirect or update state
-            console.log('Logged in successfully');
-            router.push('/dashboard')
+            router.push('/dashboard');
         }
         setLoading(false);
     };
 
     return (
-        <main className={`relative w-full h-screen overflow-hidden bg-[#030303] text-white flex items-center justify-center ${display.className}`}>
+        <div className="min-h-screen flex font-sans" style={{ background: WF.bg }}>
 
-            {/* SVG Filter Definition (Hidden) */}
-            <svg className="absolute w-0 h-0">
-                <defs>
-                    <filter id="gooey">
-                        <feGaussianBlur in="SourceGraphic" stdDeviation="15" result="blur" />
-                        <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 35 -15" result="goo" />
-                        <feComposite in="SourceGraphic" in2="goo" operator="atop" />
-                    </filter>
-                </defs>
-            </svg>
+            {/* ── Left panel (branding) — hidden on mobile ─────────────── */}
+            <div className="hidden lg:flex flex-col justify-between w-[420px] flex-shrink-0 p-10 text-white relative overflow-hidden"
+                style={{ background: 'linear-gradient(160deg, #B91C1C 0%, #7F1D1D 55%, #3A0A0A 100%)' }}>
+                <div className="absolute top-0 right-0 w-64 h-64 rounded-full"
+                    style={{ background: 'rgba(255,205,65,0.08)', filter: 'blur(60px)' }} />
 
-            {/* Background Layer */}
-            <div ref={containerRef} className="ferro-container fixed inset-0 z-0" />
+                {/* Logo */}
+                <div className="relative z-10">
+                    <Link href="/" className="flex items-center gap-1.5">
+                        <span className="font-display text-2xl font-bold italic" style={{ color: '#FFCD41' }}>West</span>
+                        <span className="font-display text-2xl font-bold text-white">Bank</span>
+                    </Link>
+                </div>
 
-            {/* Custom new Cursor */}
-            <div ref={cursorRef} className="cursor-blob hidden md:block" />
+                {/* Middle copy */}
+                <div className="relative z-10 space-y-6">
+                    <div>
+                        <h2 className="font-display text-3xl font-bold leading-tight mb-4">
+                            Your finances,<br />fully protected.
+                        </h2>
+                        <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                            Every account is FDIC insured up to $250,000.
+                            Our human review team monitors every transaction so you never have to worry.
+                        </p>
+                    </div>
 
-            {/* Login Interface */}
-            <section className="relative z-10 w-full max-w-112.5 p-10">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 1, ease: [0.2, 1, 0.3, 1] }}
-                    className="mb-14"
-                >
-                    <span className={`block text-xs uppercase tracking-[4px] text-gray-500 mb-2 ${mono.className}`}>
-                        Private Member Access
-                    </span>
-                    <h1 className="text-4xl font-bold tracking-tighter bg-gradient-to-b from-white via-white to-gray-600 text-transparent bg-clip-text">
-                        IDENTITY.. <br />VERIFICATION
-                    </h1>
-                </motion.div>
+                    <div className="space-y-3">
+                        {[
+                            { icon: Shield, label: 'FDIC Insured · Member Since 2019' },
+                            { icon: Lock, label: '256-bit AES Encryption' },
+                        ].map(({ icon: Icon, label }) => (
+                            <div key={label} className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                    style={{ background: 'rgba(255,205,65,0.15)' }}>
+                                    <Icon size={14} style={{ color: '#FFCD41' }} />
+                                </div>
+                                <span className="text-sm" style={{ color: 'rgba(255,255,255,0.7)' }}>{label}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
-                <form onSubmit={handleLogin} className="flex flex-col gap-8">
-                    {/* Email Input */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2, duration: 1 }}
-                        className="group relative"
-                    >
-                        <label className={`block text-[10px] text-gray-500 mb-2 uppercase tracking-widest transition-colors group-focus-within:text-white ${mono.className}`}>
-                            Member ID / Email
-                        </label>
-                        <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className={`w-full bg-transparent border-b border-white/10 py-3 text-sm focus:outline-none focus:border-white focus:pl-2 transition-all duration-300 ${mono.className}`}
-                            placeholder="— — — —"
-                        />
-                    </motion.div>
-
-                    {/* Password for Input */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3, duration: 1 }}
-                        className="group relative"
-                    >
-                        <label className={`block text-[10px] text-gray-500 mb-2 uppercase tracking-widest transition-colors group-focus-within:text-white ${mono.className}`}>
-                            Security Passcode
-                        </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className={`w-full bg-transparent border-b border-white/10 py-3 text-sm focus:outline-none focus:border-white focus:pl-2 transition-all duration-300 ${mono.className}`}
-                            placeholder="••••••••"
-                        />
-                    </motion.div>
-
-                    {/* Error Message */}
-                    {error && (
-                        <div className={`text-red-500 text-xs ${mono.className}`}>
-                            ERROR: {error}
-                        </div>
-                    )}
-
-                    {/* Submit Button */}
-                    <motion.button
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.4, duration: 1 }}
-                        disabled={loading}
-                        className={`mt-8 w-full bg-white text-black py-5 font-bold text-xs tracking-[2px] hover:scale-[1.02] active:scale-[0.98] transition-transform relative overflow-hidden group ${display.className}`}
-                    >
-                        <span className="relative z-10">
-                            {loading ? 'VERIFYING CREDENTIALS....' : 'AUTHENTICATE SESSION'}
-                        </span>
-                        <div className="absolute inset-0 bg-gray-200 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
-                    </motion.button>
-                </form>
-            </section>
-
-            {/* Metadata Footer */}
-            <div className={`fixed bottom-10 right-10 text-[10px] text-right text-gray-800 leading-relaxed pointer-events-none ${mono.className}`}>
-                CONNECTION: {loading ? 'VERIFYING...' : 'SECURE'}<br />
-                SECURITY: 256-Bit SSL Encrypted<br />
+                {/* Bottom legal */}
+                <p className="relative z-10 text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                    West Bank, N.A. · Member FDIC · Equal Housing Lender<br />
+                    © {new Date().getFullYear()} West Bank. All rights reserved.
+                </p>
             </div>
-        </main>
+
+            {/* ── Right panel (form) ────────────────────────────────────── */}
+            <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+                {/* Mobile logo */}
+                <div className="lg:hidden flex items-center gap-1.5 mb-10">
+                    <span className="font-display text-2xl font-bold italic" style={{ color: WF.red }}>West</span>
+                    <span className="font-display text-2xl font-bold" style={{ color: WF.black }}>Bank</span>
+                </div>
+
+                <div className="w-full max-w-md">
+                    {/* Back link */}
+                    <Link href="/" className="inline-flex items-center gap-1.5 text-sm mb-8 hover:underline"
+                        style={{ color: WF.muted }}>
+                        <ArrowLeft size={14} /> Back to home
+                    </Link>
+
+                    {/* Heading */}
+                    <h1 className="font-display text-3xl font-bold mb-1" style={{ color: WF.black }}>
+                        Sign in to your account
+                    </h1>
+                    <p className="text-sm mb-8" style={{ color: WF.muted }}>
+                        Welcome back. Enter your credentials to continue.
+                    </p>
+
+                    <form onSubmit={handleLogin} className="space-y-5">
+                        {/* Email */}
+                        <div>
+                            <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider"
+                                style={{ color: WF.muted }}>
+                                Email Address
+                            </label>
+                            <input
+                                type="email" value={email} onChange={e => setEmail(e.target.value)}
+                                placeholder="you@example.com" required autoComplete="email" autoFocus
+                                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                                style={{
+                                    background: WF.surface, border: `1.5px solid ${WF.border}`,
+                                    color: WF.black,
+                                }}
+                                onFocus={e => { e.target.style.borderColor = WF.red; }}
+                                onBlur={e => { e.target.style.borderColor = WF.border; }}
+                            />
+                        </div>
+
+                        {/* Password */}
+                        <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider" style={{ color: WF.muted }}>
+                                    Password
+                                </label>
+                                <Link href="/forgot-password" className="text-xs font-bold hover:underline"
+                                    style={{ color: WF.red }}>
+                                    Forgot password?
+                                </Link>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type={showPw ? 'text' : 'password'} value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    placeholder="••••••••" required autoComplete="current-password"
+                                    className="w-full px-4 py-3 pr-11 rounded-xl text-sm outline-none transition-all"
+                                    style={{
+                                        background: WF.surface, border: `1.5px solid ${WF.border}`,
+                                        color: WF.black,
+                                    }}
+                                    onFocus={e => { e.target.style.borderColor = WF.red; }}
+                                    onBlur={e => { e.target.style.borderColor = WF.border; }}
+                                />
+                                <button type="button" onClick={() => setShowPw(!showPw)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:opacity-70"
+                                    style={{ color: WF.muted }}>
+                                    {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Remember me */}
+                        <div className="flex items-center gap-2.5">
+                            <input type="checkbox" id="remember" checked={remember}
+                                onChange={e => setRemember(e.target.checked)}
+                                className="w-4 h-4 rounded accent-red-700 cursor-pointer" />
+                            <label htmlFor="remember" className="text-sm cursor-pointer select-none"
+                                style={{ color: WF.muted }}>
+                                Keep me signed in
+                            </label>
+                        </div>
+
+                        {/* Error */}
+                        {error && (
+                            <div className="px-4 py-3 rounded-xl text-sm border"
+                                style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}>
+                                {error}
+                            </div>
+                        )}
+
+                        {/* Submit */}
+                        <button type="submit" disabled={loading || !email || !password}
+                            className="w-full py-3.5 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
+                            style={{ background: WF.red, boxShadow: '0 4px 16px rgba(215,30,40,0.3)' }}>
+                            {loading ? <><Loader2 size={16} className="animate-spin" /> Signing in…</> : 'Sign In'}
+                        </button>
+                    </form>
+
+                    {/* Divider */}
+                    <div className="flex items-center gap-3 my-6">
+                        <div className="flex-1 h-px" style={{ background: WF.border }} />
+                        <span className="text-xs" style={{ color: WF.muted }}>New to West Bank?</span>
+                        <div className="flex-1 h-px" style={{ background: WF.border }} />
+                    </div>
+
+                    {/* Create account CTA */}
+                    <Link href="/register"
+                        className="block w-full text-center py-3.5 rounded-xl font-bold text-sm border transition-all hover:shadow-sm"
+                        style={{ borderColor: WF.border, color: WF.black }}>
+                        Open a Free Account
+                    </Link>
+
+                    {/* FDIC notice */}
+                    <div className="flex items-center justify-center gap-2 mt-8">
+                        <Shield size={12} style={{ color: WF.muted }} />
+                        <p className="text-[10px]" style={{ color: WF.muted }}>
+                            West Bank, N.A. · Member FDIC · Equal Housing Lender · AES-256 Encrypted
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
