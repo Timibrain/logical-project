@@ -209,7 +209,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                             </div>
                         </div>
 
-                        {/* Action Buttons */}
+                        {/* Action for Buttons */}
                         <div className="flex gap-3">
                             <button className="flex-1 py-3 bg-black border border-white/20 text-white text-[10px] font-bold tracking-widest uppercase hover:bg-white/10 transition-colors">
                                 Check Status
