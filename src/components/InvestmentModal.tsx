@@ -90,7 +90,8 @@ interface InvestmentModalProps {
     isOpen: boolean;
     onClose: () => void;
     userId: string;
-    userBalance: number;
+    userBalance?: number;
+    currentBalance?: number;
     onRequestDeposit?: () => void;
 }
 
@@ -117,7 +118,8 @@ function StepBar({ total, current }: { total: number; current: number }) {
     );
 }
 
-export default function InvestmentModal({ isOpen, onClose, userId, userBalance, onRequestDeposit }: InvestmentModalProps) {
+export default function InvestmentModal({ isOpen, onClose, userId, userBalance, currentBalance, onRequestDeposit }: InvestmentModalProps) {
+    const balance = currentBalance ?? userBalance ?? 0;
     const [step, setStep] = useState(1);
     const [selected, setSelected] = useState<string | null>(null);
     const [amount, setAmount] = useState('');
@@ -127,7 +129,7 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
 
     const portfolio = PORTFOLIOS.find(p => p.id === selected) ?? null;
     const amountNum = parseFloat(amount) || 0;
-    const insufficientFunds = portfolio ? amountNum > userBalance : false;
+    const insufficientFunds = portfolio ? amountNum > balance : false;
 
     const isStep1Valid = selected !== null;
     const isStep2Valid = portfolio !== null && amountNum >= (portfolio?.minAmount ?? 0) && !insufficientFunds && agreed;
@@ -360,7 +362,7 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
                                             </div>
                                             <div className="flex items-center justify-between mt-1.5">
                                                 <p className="text-[10px]" style={{ color: WF.muted }}>
-                                                    Available balance: <strong style={{ color: WF.black }}>${userBalance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+                                                    Available balance: <strong style={{ color: WF.black }}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
                                                 </p>
                                                 {amountNum > 0 && amountNum < portfolio.minAmount && (
                                                     <p className="text-[10px]" style={{ color: '#D97706' }}>
