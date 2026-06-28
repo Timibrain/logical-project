@@ -360,9 +360,9 @@ function ProofLightbox({ url, onClose }: { url: string; onClose: () => void }) {
 
 // ─── Sidebar list pane ────────────────────────────────────────────────────────
 
-function SidePane({ children }: { children: React.ReactNode }) {
+function SidePane({ children, hidden }: { children: React.ReactNode; hidden?: boolean }) {
     return (
-        <div className="w-72 flex flex-col flex-shrink-0 overflow-hidden"
+        <div className={`${hidden ? 'hidden' : 'flex'} flex-col flex-shrink-0 overflow-hidden w-full md:w-72 md:flex`}
             style={{ background: WF.surface, borderRight: `1px solid ${WF.border}` }}>
             {children}
         </div>
@@ -556,14 +556,34 @@ function BalanceTab() {
         e.preventDefault();
         if (!selectedUser) return;
         setSaving(true); setSavedMsg('');
+
+        const targetBalance = parseFloat(newBalance);
+        const currentBal = parseFloat(selectedUser.balance) || 0;
+        const diff = parseFloat((targetBalance - currentBal).toFixed(2));
+
         const res = await adminFetch('/api/admin/set-balance', {
             method: 'POST',
-            body: JSON.stringify({ userId: selectedUser.id, balance: parseFloat(newBalance) }),
+            body: JSON.stringify({ userId: selectedUser.id, balance: targetBalance }),
         });
         if (res.ok) {
+            // Auto-log a transaction record for this adjustment
+            if (diff !== 0) {
+                await adminFetch('/api/admin/add-transaction', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        user_id: selectedUser.id,
+                        direction: diff > 0 ? 'DEPOSIT' : 'WITHDRAWAL',
+                        type: 'ADJUSTMENT',
+                        amount: Math.abs(diff),
+                        status: 'COMPLETED',
+                        note: `Admin balance set from $${currentBal.toFixed(2)} → $${targetBalance.toFixed(2)}`,
+                        skip_balance_update: true,
+                    }),
+                });
+            }
             setSavedMsg('Balance updated successfully.');
-            setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, balance: parseFloat(newBalance) } : u));
-            setSelectedUser((prev: any) => ({ ...prev, balance: parseFloat(newBalance) }));
+            setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, balance: targetBalance } : u));
+            setSelectedUser((prev: any) => ({ ...prev, balance: targetBalance }));
             setNewBalance('');
         } else { setSavedMsg('Error saving balance'); }
         setSaving(false);
@@ -587,8 +607,8 @@ function BalanceTab() {
     );
 
     return (
-        <div className="flex h-full">
-            <SidePane>
+        <div className="flex flex-col md:flex-row h-full">
+            <SidePane hidden={!!selectedUser}>
                 <div className="px-5 py-4 space-y-3 flex-shrink-0"
                     style={{ borderBottom: `1px solid ${WF.border}` }}>
                     <div className="flex justify-between items-center">
@@ -648,9 +668,15 @@ function BalanceTab() {
                 </div>
             </SidePane>
 
-            <div className="flex-1 overflow-y-auto p-8" style={{ background: WF.bg }}>
+            <div className={`${selectedUser ? 'flex' : 'hidden'} md:flex flex-1 overflow-y-auto flex-col`} style={{ background: WF.bg }}>
                 {selectedUser ? (
-                    <div className="max-w-lg mx-auto space-y-5">
+                    <div className="max-w-lg mx-auto space-y-5 p-4 md:p-8 w-full">
+                        {/* Mobile back button */}
+                        <button onClick={() => setSelectedUser(null)}
+                            className="flex md:hidden items-center gap-2 text-xs font-bold mb-1"
+                            style={{ color: WF.red }}>
+                            <ChevronDown size={14} className="rotate-90" /> Back to users
+                        </button>
                         {/* User info card */}
                         <Card className="p-6">
                             <div className="flex items-center gap-4 mb-5">
@@ -748,7 +774,7 @@ function BalanceTab() {
                         </Card>
                     </div>
                 ) : (
-                    <div className="flex-1 h-full flex flex-col items-center justify-center gap-3">
+                    <div className="hidden md:flex flex-1 h-full flex-col items-center justify-center gap-3">
                         <Users size={32} style={{ color: WF.border }} />
                         <p className="text-sm" style={{ color: WF.muted }}>Select a user to manage their account</p>
                     </div>
@@ -1786,35 +1812,32 @@ export default function AdminPanel() {
     return (
         <div className="flex flex-col h-screen font-sans" style={{ background: WF.bg }}>
             {/* Header */}
-            <header className="flex-shrink-0 px-8 py-0 flex items-center justify-between"
-                style={{ background: WF.surface, borderBottom: `1px solid ${WF.border}`, height: 64 }}>
+            <header className="flex-shrink-0 px-4 md:px-8 flex items-center justify-between gap-2"
+                style={{ background: WF.surface, borderBottom: `1px solid ${WF.border}`, height: 56 }}>
                 {/* Logo */}
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                        <span className="font-display text-xl font-bold" style={{ color: WF.red }}>West</span>
-                        <span className="font-display text-xl font-bold" style={{ color: WF.black }}>Bank</span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-1">
+                        <span className="font-display text-lg font-bold" style={{ color: WF.red }}>West</span>
+                        <span className="font-display text-lg font-bold" style={{ color: WF.black }}>Bank</span>
                     </div>
-                    <div className="h-4 w-px mx-1" style={{ background: WF.border }} />
-                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg"
+                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-lg"
                         style={{ background: 'rgba(215,30,40,0.08)', border: '1px solid rgba(215,30,40,0.15)' }}>
-                        <ShieldCheck size={11} style={{ color: WF.red }} />
-                        <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: WF.red }}>
-                            Admin
-                        </span>
+                        <ShieldCheck size={10} style={{ color: WF.red }} />
+                        <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: WF.red }}>Admin</span>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <nav className="flex items-center gap-1">
+                {/* Tabs — scrollable on mobile */}
+                <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-hide flex-1 justify-end">
                     {tabs.map(t => (
                         <button key={t.id} onClick={() => setTab(t.id)}
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                            className="flex items-center gap-1.5 px-2.5 md:px-4 py-2 rounded-xl text-xs font-bold transition-all flex-shrink-0"
                             style={{
                                 background: tab === t.id ? WF.red : 'transparent',
                                 color: tab === t.id ? '#fff' : WF.muted,
                             }}>
-                            <t.icon size={14} />
-                            {t.label}
+                            <t.icon size={13} />
+                            <span className="hidden sm:inline">{t.label}</span>
                         </button>
                     ))}
                 </nav>

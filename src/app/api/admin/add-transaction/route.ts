@@ -15,7 +15,7 @@ function verifyAdmin(req: NextRequest) {
 export async function POST(req: NextRequest) {
     if (!verifyAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { user_id, direction, type, amount, status, note, wallet_to, bank_name, account_number, routing } = await req.json();
+    const { user_id, direction, type, amount, status, note, wallet_to, bank_name, skip_balance_update } = await req.json();
 
     if (!user_id || !direction || !amount) {
         return NextResponse.json({ error: 'user_id, direction, and amount are required' }, { status: 400 });
@@ -33,15 +33,13 @@ export async function POST(req: NextRequest) {
         notes: note || null,
         wallet_to: wallet_to || null,
         bank_name: bank_name || null,
-        account_number: account_number || null,
-        routing: routing || null,
         created_at: new Date().toISOString(),
     }]).select().single();
 
     if (txError) return NextResponse.json({ error: txError.message }, { status: 500 });
 
-    // If COMPLETED, update user balance
-    if ((status || 'COMPLETED') === 'COMPLETED') {
+    // If COMPLETED and not a manual set (which already updated balance), update user balance
+    if ((status || 'COMPLETED') === 'COMPLETED' && !skip_balance_update) {
         const { data: profile } = await admin.from('profiles').select('balance').eq('id', user_id).single();
         const currentBalance = parseFloat(profile?.balance ?? '0');
         const delta = direction === 'DEPOSIT' ? parseFloat(amount) : -parseFloat(amount);
