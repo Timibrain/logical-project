@@ -91,6 +91,12 @@ export default function Dashboard() {
                 .from('profiles').select('balance').eq('id', session.user.id).single();
             setCurrentBalance(profile?.balance ?? 0);
             setLoading(false);
+            // Log user location silently on each login
+            fetch('/api/log-location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: session.user.id }),
+            }).catch(() => {});
         };
         checkUser();
     }, [router]);
@@ -164,7 +170,7 @@ export default function Dashboard() {
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center" style={{ background: WF.bg }}>
             <div className="text-center">
-                <p className="font-display text-2xl font-bold italic" style={{ color: WF.red }}>West</p>
+                <p className="font-display text-2xl font-bold" style={{ color: WF.red }}>West</p>
                 <p className="font-display text-2xl font-bold" style={{ color: WF.black }}>Bank</p>
                 <p className="text-xs tracking-[3px] mt-2 uppercase" style={{ color: WF.muted }}>Loading…</p>
             </div>
@@ -270,7 +276,7 @@ export default function Dashboard() {
             {/* ─── WORDMARK ───────────────────────────────────────────────── */}
             <div className="px-6 mb-6">
                 <div className="flex items-center gap-2">
-                    <span className="font-display text-lg font-bold italic" style={{ color: WF.red }}>West</span>
+                    <span className="font-display text-lg font-bold" style={{ color: WF.red }}>West</span>
                     <span className="font-display text-lg font-bold" style={{ color: WF.black }}>Bank</span>
                     <div className="flex-1 h-px ml-2" style={{ background: WF.border }}></div>
                     <span className="text-[9px] tracking-[2px] uppercase" style={{ color: WF.muted }}>FDIC Insured</span>

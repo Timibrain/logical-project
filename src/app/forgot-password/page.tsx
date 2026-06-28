@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="flex items-center justify-center gap-1.5 mb-10">
-                    <span className="font-display text-2xl font-bold italic" style={{ color: WF.red }}>West</span>
+                    <span className="font-display text-2xl font-bold" style={{ color: WF.red }}>West</span>
                     <span className="font-display text-2xl font-bold" style={{ color: WF.black }}>Bank</span>
                 </div>
 

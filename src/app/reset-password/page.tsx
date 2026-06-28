@@ -83,7 +83,7 @@ export default function ResetPasswordPage() {
                 {/* Logo */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-2 mb-4">
-                        <span className="font-display text-2xl font-bold italic" style={{ color: WF.red }}>West</span>
+                        <span className="font-display text-2xl font-bold" style={{ color: WF.red }}>West</span>
                         <span className="font-display text-2xl font-bold" style={{ color: WF.black }}>Bank</span>
                     </div>
                     <h1 className="font-display text-xl font-bold" style={{ color: WF.black }}>Set New Password</h1>

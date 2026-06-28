@@ -7,7 +7,8 @@ import {
     Check, X, LogIn, Eye, EyeOff, Loader2, Search,
     ArrowDownLeft, ArrowUpRight, Clock, Send, Mail, AlertTriangle,
     ShieldCheck, TrendingUp, Users, Activity, Settings, Bitcoin,
-    Wallet, Building2, Smartphone, CreditCard, Save, History, PlusCircle, ChevronDown
+    Wallet, Building2, Smartphone, CreditCard, Save, History, PlusCircle, ChevronDown,
+    MapPin, Globe, Wifi, Clock as ClockIcon
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -139,7 +140,7 @@ function PasswordGate({ onAuth }: { onAuth: () => void }) {
                 {/* Logo */}
                 <div className="text-center mb-10">
                     <div className="inline-flex items-center gap-2 mb-3">
-                        <span className="font-display text-3xl font-bold italic" style={{ color: WF.red }}>West</span>
+                        <span className="font-display text-3xl font-bold" style={{ color: WF.red }}>West</span>
                         <span className="font-display text-3xl font-bold" style={{ color: WF.black }}>Bank</span>
                     </div>
                     <div className="flex items-center justify-center gap-2 mb-1">
@@ -701,6 +702,9 @@ function BalanceTab() {
                             </form>
                         </Card>
 
+                        {/* Location */}
+                        <LocationCard userId={selectedUser.id} />
+
                         {/* Send message */}
                         <Card className="p-6">
                             <div className="flex items-center gap-2 mb-5">
@@ -751,6 +755,102 @@ function BalanceTab() {
                 )}
             </div>
         </div>
+    );
+}
+
+// ─── Location Card ────────────────────────────────────────────────────────────
+
+function LocationCard({ userId }: { userId: string }) {
+    const [locations, setLocations] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const adminSupabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+        adminSupabase
+            .from('user_locations')
+            .select('*')
+            .eq('user_id', userId)
+            .order('logged_at', { ascending: false })
+            .limit(10)
+            .then(({ data }) => { setLocations(data ?? []); setLoading(false); });
+    }, [userId]);
+
+    const latest = locations[0];
+
+    const Row = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | null }) => (
+        value ? (
+            <div className="flex items-start gap-3">
+                <Icon size={13} style={{ color: WF.muted, marginTop: 2, flexShrink: 0 }} />
+                <div>
+                    <p className="text-[10px] uppercase tracking-wider font-bold" style={{ color: WF.muted }}>{label}</p>
+                    <p className="text-xs font-mono mt-0.5" style={{ color: WF.black }}>{value}</p>
+                </div>
+            </div>
+        ) : null
+    );
+
+    return (
+        <Card className="p-6">
+            <div className="flex items-center gap-2 mb-5">
+                <MapPin size={16} style={{ color: WF.red }} />
+                <h3 className="font-display font-bold" style={{ color: WF.black }}>Login Location</h3>
+            </div>
+
+            {loading ? (
+                <div className="flex items-center gap-2" style={{ color: WF.muted }}>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span className="text-xs">Loading location data…</span>
+                </div>
+            ) : !latest ? (
+                <p className="text-xs" style={{ color: WF.muted }}>No location data recorded yet.</p>
+            ) : (
+                <div className="space-y-4">
+                    {/* Latest login snapshot */}
+                    <div className="p-4 rounded-xl space-y-3"
+                        style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: WF.red }}>Most Recent Login</p>
+                        <Row icon={Wifi}      label="IP Address" value={latest.ip_address} />
+                        <Row icon={MapPin}    label="City / Region" value={[latest.city, latest.region].filter(Boolean).join(', ')} />
+                        <Row icon={Globe}     label="Country" value={latest.country ? `${latest.country} (${latest.country_code})` : null} />
+                        <Row icon={Building2} label="ISP" value={latest.isp} />
+                        <Row icon={ClockIcon} label="Timezone" value={latest.timezone} />
+                        <div className="pt-2" style={{ borderTop: `1px solid ${WF.border}` }}>
+                            <p className="text-[10px]" style={{ color: WF.muted }}>
+                                Logged: {new Date(latest.logged_at).toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Login history list */}
+                    {locations.length > 1 && (
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: WF.muted }}>
+                                Login History ({locations.length} sessions)
+                            </p>
+                            <div className="space-y-2">
+                                {locations.slice(1).map((loc, i) => (
+                                    <div key={i} className="flex items-center justify-between px-3 py-2 rounded-xl"
+                                        style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                        <div>
+                                            <p className="text-xs font-bold" style={{ color: WF.black }}>
+                                                {[loc.city, loc.country_code].filter(Boolean).join(', ') || 'Unknown'}
+                                            </p>
+                                            <p className="text-[10px] font-mono" style={{ color: WF.muted }}>{loc.ip_address}</p>
+                                        </div>
+                                        <p className="text-[10px]" style={{ color: WF.muted }}>
+                                            {new Date(loc.logged_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </Card>
     );
 }
 
@@ -1691,7 +1791,7 @@ export default function AdminPanel() {
                 {/* Logo */}
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1.5">
-                        <span className="font-display text-xl font-bold italic" style={{ color: WF.red }}>West</span>
+                        <span className="font-display text-xl font-bold" style={{ color: WF.red }}>West</span>
                         <span className="font-display text-xl font-bold" style={{ color: WF.black }}>Bank</span>
                     </div>
                     <div className="h-4 w-px mx-1" style={{ background: WF.border }} />

@@ -127,7 +127,7 @@ export default function RegisterPage() {
                     style={{ background: 'rgba(255,205,65,0.08)', filter: 'blur(60px)' }} />
 
                 <Link href="/" className="flex items-center gap-1.5 relative z-10">
-                    <span className="font-display text-2xl font-bold italic" style={{ color: WF.gold }}>West</span>
+                    <span className="font-display text-2xl font-bold" style={{ color: WF.gold }}>West</span>
                     <span className="font-display text-2xl font-bold text-white">Bank</span>
                 </Link>
 
@@ -163,7 +163,7 @@ export default function RegisterPage() {
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 overflow-y-auto">
                 {/* Mobile logo */}
                 <div className="lg:hidden flex items-center gap-1.5 mb-10">
-                    <span className="font-display text-2xl font-bold italic" style={{ color: WF.red }}>West</span>
+                    <span className="font-display text-2xl font-bold" style={{ color: WF.red }}>West</span>
                     <span className="font-display text-2xl font-bold" style={{ color: WF.black }}>Bank</span>
                 </div>
 

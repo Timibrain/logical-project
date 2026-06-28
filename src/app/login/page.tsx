@@ -53,7 +53,7 @@ export default function LoginPage() {
                 {/* Logo */}
                 <div className="relative z-10">
                     <Link href="/" className="flex items-center gap-1.5">
-                        <span className="font-display text-2xl font-bold italic" style={{ color: '#FFCD41' }}>West</span>
+                        <span className="font-display text-2xl font-bold" style={{ color: '#FFCD41' }}>West</span>
                         <span className="font-display text-2xl font-bold text-white">Bank</span>
                     </Link>
                 </div>
@@ -97,7 +97,7 @@ export default function LoginPage() {
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
                 {/* Mobile logo */}
                 <div className="lg:hidden flex items-center gap-1.5 mb-10">
-                    <span className="font-display text-2xl font-bold italic" style={{ color: WF.red }}>West</span>
+                    <span className="font-display text-2xl font-bold" style={{ color: WF.red }}>West</span>
                     <span className="font-display text-2xl font-bold" style={{ color: WF.black }}>Bank</span>
                 </div>
 
