@@ -444,38 +444,21 @@ export default function HomePage() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {[
-                            { name: 'Richard Harlow', title: 'Chief Executive Officer', initials: 'RH', color: WF.red, exp: 'Formerly Goldman Sachs, 24 yrs' },
-                            { name: 'Diana Osei', title: 'Chief Financial Officer', initials: 'DO', color: '#0369A1', exp: 'Formerly JPMorgan, 18 yrs' },
-                            { name: 'Marcus Webb', title: 'Chief Risk Officer', initials: 'MW', color: '#7F56D9', exp: 'Formerly Citibank, 21 yrs' },
-                            { name: 'Sophia Tanaka', title: 'Head of Operations', initials: 'ST', color: '#0F766E', exp: 'Formerly HSBC, 15 yrs' },
-                        ].map(({ name, title, initials, color, exp }) => (
+                            { name: 'Richard Harlow', title: 'Chief Executive Officer', color: WF.red, exp: 'Formerly Goldman Sachs · 24 yrs experience', photo: 'photo-1560250097-0b93528c311a' },
+                            { name: 'Diana Osei', title: 'Chief Financial Officer', color: '#0369A1', exp: 'Formerly JPMorgan · 18 yrs experience', photo: 'photo-1573496359142-b8d87734a5a2' },
+                            { name: 'Marcus Webb', title: 'Chief Risk Officer', color: '#7F56D9', exp: 'Formerly Citibank · 21 yrs experience', photo: 'photo-1519085360753-af0119f7cbe7' },
+                            { name: 'Sophia Tanaka', title: 'Head of Operations', color: '#0F766E', exp: 'Formerly HSBC · 15 yrs experience', photo: 'photo-1580489944761-15a19d654956' },
+                        ].map(({ name, title, color, exp, photo }) => (
                             <div key={name} className="rounded-2xl overflow-hidden group cursor-default transition-all hover:shadow-lg"
                                 style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
-                                {/* Avatar area */}
-                                <div className="relative h-48 flex items-end justify-center pb-0 overflow-hidden"
-                                    style={{ background: `linear-gradient(160deg, ${color}18, ${color}08)` }}>
-                                    {/* Background circle */}
-                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 w-32 h-32 rounded-full opacity-10"
-                                        style={{ background: color }} />
-                                    {/* Person SVG illustration */}
-                                    <svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"
-                                        className="relative z-10 transition-transform group-hover:scale-105">
-                                        {/* Head */}
-                                        <circle cx="60" cy="42" r="22" fill={color} opacity="0.9" />
-                                        {/* Neck */}
-                                        <rect x="52" y="62" width="16" height="12" rx="4" fill={color} opacity="0.85" />
-                                        {/* Suit body */}
-                                        <path d="M20 140 C20 100 35 84 60 80 C85 84 100 100 100 140Z" fill={color} opacity="0.8" />
-                                        {/* Collar left */}
-                                        <path d="M52 74 L42 90 L60 85Z" fill="white" opacity="0.9" />
-                                        {/* Collar right */}
-                                        <path d="M68 74 L78 90 L60 85Z" fill="white" opacity="0.9" />
-                                        {/* Tie */}
-                                        <path d="M57 82 L60 100 L63 82 L60 78Z" fill={color} opacity="0.5" />
-                                        {/* Initials on head */}
-                                        <text x="60" y="48" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold" fontFamily="serif">{initials}</text>
-                                    </svg>
-                                    {/* Gold accent bar */}
+                                {/* Photo */}
+                                <div className="relative h-56 overflow-hidden">
+                                    <img
+                                        src={`https://images.unsplash.com/${photo}?w=400&h=400&fit=crop&crop=faces&auto=format&q=80`}
+                                        alt={name}
+                                        className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                                    />
+                                    <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.5) 0%, transparent 60%)' }} />
                                     <div className="absolute bottom-0 left-0 right-0 h-1" style={{ background: color }} />
                                 </div>
                                 {/* Info */}
@@ -483,6 +466,122 @@ export default function HomePage() {
                                     <h3 className="font-display font-bold text-base mb-0.5" style={{ color: WF.black }}>{name}</h3>
                                     <p className="text-xs font-bold mb-2" style={{ color }}>{title}</p>
                                     <p className="text-[11px]" style={{ color: WF.muted }}>{exp}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
+                REAL PEOPLE SECTION
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-20 px-6" style={{ background: WF.bg }}>
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-14">
+                        <p className="text-xs font-bold tracking-[3px] uppercase mb-3" style={{ color: WF.red }}>Our Community</p>
+                        <h2 className="font-display text-3xl md:text-4xl font-bold mb-4" style={{ color: WF.black }}>
+                            Real people. Real banking.
+                        </h2>
+                        <p className="text-sm max-w-lg mx-auto" style={{ color: WF.muted }}>
+                            From entrepreneurs to students, West Bank serves members across every walk of life.
+                        </p>
+                        <div className="w-12 h-0.5 mx-auto rounded mt-4" style={{ background: WF.gold }} />
+                    </div>
+
+                    {/* Photo mosaic grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {/* Large left card */}
+                        <div className="md:col-span-2 md:row-span-2 relative rounded-3xl overflow-hidden group" style={{ minHeight: 360 }}>
+                            <img
+                                src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=700&h=700&fit=crop&crop=faces&auto=format&q=80"
+                                alt="Business professional"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                style={{ minHeight: 360 }}
+                            />
+                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.75) 0%, transparent 50%)' }} />
+                            <div className="absolute bottom-5 left-5">
+                                <p className="text-white font-display font-bold text-lg">Daniel Okafor</p>
+                                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>Business Account Holder · Lagos</p>
+                            </div>
+                        </div>
+
+                        {/* Top right 1 */}
+                        <div className="relative rounded-3xl overflow-hidden group" style={{ minHeight: 170 }}>
+                            <img
+                                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=faces&auto=format&q=80"
+                                alt="Professional woman"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.65) 0%, transparent 55%)' }} />
+                            <div className="absolute bottom-3 left-3">
+                                <p className="text-white text-xs font-bold">Amara Singh</p>
+                                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Investment Member</p>
+                            </div>
+                        </div>
+
+                        {/* Top right 2 */}
+                        <div className="relative rounded-3xl overflow-hidden group" style={{ minHeight: 170 }}>
+                            <img
+                                src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop&crop=faces&auto=format&q=80"
+                                alt="Professional man"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.65) 0%, transparent 55%)' }} />
+                            <div className="absolute bottom-3 left-3">
+                                <p className="text-white text-xs font-bold">James Adeyemi</p>
+                                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Loan Member</p>
+                            </div>
+                        </div>
+
+                        {/* Bottom right 1 */}
+                        <div className="relative rounded-3xl overflow-hidden group" style={{ minHeight: 170 }}>
+                            <img
+                                src="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=faces&auto=format&q=80"
+                                alt="Professional woman"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.65) 0%, transparent 55%)' }} />
+                            <div className="absolute bottom-3 left-3">
+                                <p className="text-white text-xs font-bold">Claire Mensah</p>
+                                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Savings Member</p>
+                            </div>
+                        </div>
+
+                        {/* Bottom right 2 — red accent */}
+                        <div className="relative rounded-3xl overflow-hidden group" style={{ minHeight: 170 }}>
+                            <img
+                                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=faces&auto=format&q=80"
+                                alt="Professional man"
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.65) 0%, transparent 55%)' }} />
+                            <div className="absolute bottom-3 left-3">
+                                <p className="text-white text-xs font-bold">Kevin Larson</p>
+                                <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.65)' }}>Grant Recipient</p>
+                            </div>
+                            <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                style={{ background: WF.red, color: '#fff' }}>Member</div>
+                        </div>
+                    </div>
+
+                    {/* Bottom row — 3 more portrait photos */}
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                        {[
+                            { src: 'photo-1494790108377-be9c29b29330', name: 'Grace Okonkwo', role: 'Business Banking' },
+                            { src: 'photo-1438761681033-6461ffad8d80', name: 'Sophia Carter', role: 'Checking Account' },
+                            { src: 'photo-1500648767791-00dcc994a43e', name: 'Marcus Reid', role: 'Investment Member' },
+                        ].map(({ src, name, role }) => (
+                            <div key={name} className="relative rounded-3xl overflow-hidden group" style={{ minHeight: 200 }}>
+                                <img
+                                    src={`https://images.unsplash.com/${src}?w=500&h=400&fit=crop&crop=faces&auto=format&q=80`}
+                                    alt={name}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                />
+                                <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(26,26,26,0.70) 0%, transparent 50%)' }} />
+                                <div className="absolute bottom-4 left-4">
+                                    <p className="text-white text-sm font-bold">{name}</p>
+                                    <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.65)' }}>{role}</p>
                                 </div>
                             </div>
                         ))}
@@ -503,10 +602,22 @@ export default function HomePage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                            { name: 'Sarah M.', role: 'Small Business Owner', text: 'West Bank approved my business loan in 48 hours. The human review process made me feel actually seen, not just a credit score.' },
-                            { name: 'James T.', role: 'Freelancer', text: "I switched from a big bank after my account was frozen for 2 weeks. West Bank's team resolved my deposit in the same day." },
-                            { name: 'Priya K.', role: 'Graduate Student', text: 'No monthly fees and real 24/7 support — I finally found a bank that treats students like real customers.' },
-                        ].map(({ name, role, text }) => (
+                            {
+                                name: 'Sarah Mitchell', role: 'Small Business Owner',
+                                photo: 'photo-1573496359142-b8d87734a5a2',
+                                text: 'West Bank approved my business loan in 48 hours. The human review process made me feel actually seen, not just a credit score.',
+                            },
+                            {
+                                name: 'James Tanner', role: 'Freelancer',
+                                photo: 'photo-1519085360753-af0119f7cbe7',
+                                text: "I switched from a big bank after my account was frozen for 2 weeks. West Bank's team resolved my deposit in the same day.",
+                            },
+                            {
+                                name: 'Priya Kumar', role: 'Graduate Student',
+                                photo: 'photo-1580489944761-15a19d654956',
+                                text: 'No monthly fees and real 24/7 support — I finally found a bank that treats students like real customers.',
+                            },
+                        ].map(({ name, role, text, photo }) => (
                             <div key={name} className="p-6 rounded-2xl" style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
                                 <div className="flex gap-0.5 mb-4">
                                     {Array(5).fill(0).map((_, i) => (
@@ -515,10 +626,12 @@ export default function HomePage() {
                                 </div>
                                 <p className="text-sm leading-relaxed mb-5" style={{ color: WF.muted }}>"{text}"</p>
                                 <div className="flex items-center gap-3">
-                                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                                        style={{ background: WF.red }}>
-                                        {name[0]}
-                                    </div>
+                                    <img
+                                        src={`https://images.unsplash.com/${photo}?w=80&h=80&fit=crop&crop=faces&auto=format&q=80`}
+                                        alt={name}
+                                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                                        style={{ border: `2px solid ${WF.border}` }}
+                                    />
                                     <div>
                                         <p className="text-sm font-bold" style={{ color: WF.black }}>{name}</p>
                                         <p className="text-[11px]" style={{ color: WF.muted }}>{role}</p>
