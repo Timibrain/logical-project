@@ -191,6 +191,53 @@ export default function HomePage() {
             </div>
 
             {/* ═══════════════════════════════════════════════════
+                TRUSTED BY ORGANIZATIONS
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-16 px-6" style={{ background: WF.surface }}>
+                <div className="max-w-7xl mx-auto">
+                    <p className="text-center text-xs font-bold tracking-[3px] uppercase mb-10" style={{ color: WF.muted }}>
+                        Trusted by leading organizations
+                    </p>
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-6">
+                        {[
+                            { name: 'NexaCorp', abbr: 'NC', color: '#0369A1' },
+                            { name: 'Granite\nAdvisors', abbr: 'GA', color: '#7F56D9' },
+                            { name: 'Summit\nGroup', abbr: 'SG', color: '#0F766E' },
+                            { name: 'Meridian\nCapital', abbr: 'MC', color: '#C9941A' },
+                            { name: 'BlueBridge\nCo.', abbr: 'BB', color: WF.red },
+                            { name: 'Vantage\nPartners', abbr: 'VP', color: '#374151' },
+                        ].map(({ name, abbr, color }) => (
+                            <div key={name} className="flex flex-col items-center gap-2 group cursor-default">
+                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-display font-bold text-sm text-white transition-all group-hover:scale-105"
+                                    style={{ background: color, boxShadow: `0 4px 14px ${color}30` }}>
+                                    {abbr}
+                                </div>
+                                <p className="text-[10px] font-bold text-center whitespace-pre-line leading-tight" style={{ color: WF.muted }}>
+                                    {name}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Stats row */}
+                    <div className="mt-14 grid grid-cols-2 md:grid-cols-4 gap-6">
+                        {[
+                            { value: '50,000+', label: 'Active Members' },
+                            { value: '$2.4B+', label: 'Assets Managed' },
+                            { value: '99.98%', label: 'Uptime SLA' },
+                            { value: '140+', label: 'Corporate Clients' },
+                        ].map(({ value, label }) => (
+                            <div key={label} className="text-center p-6 rounded-2xl"
+                                style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                <p className="font-display text-3xl font-bold mb-1" style={{ color: WF.black }}>{value}</p>
+                                <p className="text-xs font-bold" style={{ color: WF.muted }}>{label}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
                 FEATURES
             ═══════════════════════════════════════════════════ */}
             <section className="py-20 px-6">
@@ -373,6 +420,70 @@ export default function HomePage() {
                                     style={{ color: WF.red }}>
                                     Open Account <ChevronRight size={14} />
                                 </Link>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════
+                LEADERSHIP TEAM
+            ═══════════════════════════════════════════════════ */}
+            <section className="py-20 px-6" style={{ background: WF.surface }}>
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-14">
+                        <p className="text-xs font-bold tracking-[3px] uppercase mb-3" style={{ color: WF.red }}>Our Team</p>
+                        <h2 className="font-display text-3xl md:text-4xl font-bold mb-4" style={{ color: WF.black }}>
+                            Leadership you can trust
+                        </h2>
+                        <p className="text-sm max-w-lg mx-auto" style={{ color: WF.muted }}>
+                            Our executives bring decades of experience from the world's top financial institutions.
+                        </p>
+                        <div className="w-12 h-0.5 mx-auto rounded mt-4" style={{ background: WF.gold }} />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {[
+                            { name: 'Richard Harlow', title: 'Chief Executive Officer', initials: 'RH', color: WF.red, exp: 'Formerly Goldman Sachs, 24 yrs' },
+                            { name: 'Diana Osei', title: 'Chief Financial Officer', initials: 'DO', color: '#0369A1', exp: 'Formerly JPMorgan, 18 yrs' },
+                            { name: 'Marcus Webb', title: 'Chief Risk Officer', initials: 'MW', color: '#7F56D9', exp: 'Formerly Citibank, 21 yrs' },
+                            { name: 'Sophia Tanaka', title: 'Head of Operations', initials: 'ST', color: '#0F766E', exp: 'Formerly HSBC, 15 yrs' },
+                        ].map(({ name, title, initials, color, exp }) => (
+                            <div key={name} className="rounded-2xl overflow-hidden group cursor-default transition-all hover:shadow-lg"
+                                style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                {/* Avatar area */}
+                                <div className="relative h-48 flex items-end justify-center pb-0 overflow-hidden"
+                                    style={{ background: `linear-gradient(160deg, ${color}18, ${color}08)` }}>
+                                    {/* Background circle */}
+                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 w-32 h-32 rounded-full opacity-10"
+                                        style={{ background: color }} />
+                                    {/* Person SVG illustration */}
+                                    <svg width="120" height="140" viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg"
+                                        className="relative z-10 transition-transform group-hover:scale-105">
+                                        {/* Head */}
+                                        <circle cx="60" cy="42" r="22" fill={color} opacity="0.9" />
+                                        {/* Neck */}
+                                        <rect x="52" y="62" width="16" height="12" rx="4" fill={color} opacity="0.85" />
+                                        {/* Suit body */}
+                                        <path d="M20 140 C20 100 35 84 60 80 C85 84 100 100 100 140Z" fill={color} opacity="0.8" />
+                                        {/* Collar left */}
+                                        <path d="M52 74 L42 90 L60 85Z" fill="white" opacity="0.9" />
+                                        {/* Collar right */}
+                                        <path d="M68 74 L78 90 L60 85Z" fill="white" opacity="0.9" />
+                                        {/* Tie */}
+                                        <path d="M57 82 L60 100 L63 82 L60 78Z" fill={color} opacity="0.5" />
+                                        {/* Initials on head */}
+                                        <text x="60" y="48" textAnchor="middle" fill="white" fontSize="13" fontWeight="bold" fontFamily="serif">{initials}</text>
+                                    </svg>
+                                    {/* Gold accent bar */}
+                                    <div className="absolute bottom-0 left-0 right-0 h-1" style={{ background: color }} />
+                                </div>
+                                {/* Info */}
+                                <div className="p-5">
+                                    <h3 className="font-display font-bold text-base mb-0.5" style={{ color: WF.black }}>{name}</h3>
+                                    <p className="text-xs font-bold mb-2" style={{ color }}>{title}</p>
+                                    <p className="text-[11px]" style={{ color: WF.muted }}>{exp}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
