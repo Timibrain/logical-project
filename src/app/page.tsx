@@ -28,7 +28,7 @@ export default function HomePage() {
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-1.5">
-                        <span className="font-display text-xl font-bold italic" style={{ color: WF.red }}>West</span>
+                        <span className="font-display text-xl font-bold" style={{ color: WF.red }}>West</span>
                         <span className="font-display text-xl font-bold" style={{ color: WF.black }}>Bank</span>
                     </Link>
 
@@ -97,7 +97,7 @@ export default function HomePage() {
                         <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] mb-6"
                             style={{ color: WF.black }}>
                             Banking built<br />
-                            <span className="italic" style={{ color: WF.red }}>for people,</span><br />
+                            <span style={{ color: WF.red }}>for people,</span><br />
                             not algorithms.
                         </h1>
 
@@ -681,7 +681,7 @@ export default function HomePage() {
                         {/* Brand */}
                         <div className="md:col-span-2">
                             <div className="flex items-center gap-1.5 mb-4">
-                                <span className="font-display text-xl font-bold italic" style={{ color: WF.red }}>West</span>
+                                <span className="font-display text-xl font-bold" style={{ color: WF.red }}>West</span>
                                 <span className="font-display text-xl font-bold text-white">Bank</span>
                             </div>
                             <p className="text-sm leading-relaxed max-w-xs">

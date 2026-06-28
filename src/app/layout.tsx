@@ -1,17 +1,16 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Source_Sans_3, Space_Mono } from "next/font/google";
+import { Barlow, Source_Sans_3, Space_Mono } from "next/font/google";
 import "./globals.css";
 
-// Wells Fargo brand fonts (closest Google Fonts equivalents)
-// Playfair Display ≈ Wells Fargo's proprietary serif display font
-const playfairDisplay = Playfair_Display({
+// Barlow — clean corporate sans-serif, closest freely available match to Wells Fargo Sans
+const barlow = Barlow({
     subsets: ["latin"],
     weight: ["400", "500", "600", "700", "800", "900"],
-    style: ["normal", "italic"],
-    variable: "--font-playfair",
+    style: ["normal"],
+    variable: "--font-barlow",
 });
 
-// Source Sans 3 ≈ Wells Fargo Sans (clean humanist sans-serif)
+// Source Sans 3 — body text (humanist sans-serif, very close to WF body font)
 const sourceSans = Source_Sans_3({
     subsets: ["latin"],
     weight: ["300", "400", "500", "600", "700"],
@@ -39,7 +38,7 @@ export default function RootLayout({
         <html lang="en">
             <body
                 className={`
-                    ${playfairDisplay.variable}
+                    ${barlow.variable}
                     ${sourceSans.variable}
                     ${spaceMono.variable}
                     font-sans
