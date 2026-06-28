@@ -7,7 +7,7 @@ import {
     Check, X, LogIn, Eye, EyeOff, Loader2, Search,
     ArrowDownLeft, ArrowUpRight, Clock, Send, Mail, AlertTriangle,
     ShieldCheck, TrendingUp, Users, Activity, Settings, Bitcoin,
-    Wallet, Building2, Smartphone, CreditCard, Save
+    Wallet, Building2, Smartphone, CreditCard, Save, History, PlusCircle, ChevronDown
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -1375,11 +1375,298 @@ function PaymentSettingsTab() {
     );
 }
 
+// ─── History Tab ──────────────────────────────────────────────────────────────
+
+const TX_TYPES = ['BTC', 'USDT', 'WIRE', 'ZELLE', 'ACH', 'DIRECT DEPOSIT', 'CHECK', 'INTERNAL'];
+
+function HistoryTab() {
+    const [users, setUsers] = useState<any[]>([]);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [search, setSearch] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [loadingTx, setLoadingTx] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [successMsg, setSuccessMsg] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
+
+    const [form, setForm] = useState({
+        direction: 'DEPOSIT',
+        type: 'WIRE',
+        amount: '',
+        status: 'COMPLETED',
+        note: '',
+    });
+
+    const patch = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+        setForm(prev => ({ ...prev, [k]: e.target.value }));
+
+    useEffect(() => {
+        adminFetch('/api/admin/users').then(r => r.json()).then(d => setUsers(d.users ?? []));
+    }, []);
+
+    const filteredUsers = users.filter(u =>
+        u.email?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const selectUser = async (user: any) => {
+        setSelectedUser(user);
+        setShowDropdown(false);
+        setSearch(user.email);
+        setLoadingTx(true);
+        const res = await adminFetch(`/api/admin/add-transaction?user_id=${user.id}`);
+        const data = await res.json();
+        setTransactions(data.transactions ?? []);
+        setLoadingTx(false);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedUser || !form.amount) return;
+        setSubmitting(true); setSuccessMsg(''); setErrorMsg('');
+
+        const res = await adminFetch('/api/admin/add-transaction', {
+            method: 'POST',
+            body: JSON.stringify({ user_id: selectedUser.id, ...form }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+            setSuccessMsg(`${form.direction} of $${parseFloat(form.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })} added successfully.`);
+            setForm(prev => ({ ...prev, amount: '', note: '' }));
+            // Refresh transactions
+            const r2 = await adminFetch(`/api/admin/add-transaction?user_id=${selectedUser.id}`);
+            const d2 = await r2.json();
+            setTransactions(d2.transactions ?? []);
+        } else {
+            setErrorMsg(data.error ?? 'Failed to add transaction.');
+        }
+        setSubmitting(false);
+    };
+
+    return (
+        <div className="h-full overflow-y-auto p-6 md:p-8 max-w-5xl mx-auto space-y-6">
+
+            {/* Header */}
+            <div>
+                <h2 className="font-display text-2xl font-bold" style={{ color: WF.black }}>Transaction History</h2>
+                <p className="text-sm mt-1" style={{ color: WF.muted }}>Add deposit or withdrawal records to any user account.</p>
+            </div>
+
+            {/* User selector */}
+            <Card className="p-5">
+                <div className="flex items-center gap-2 mb-4">
+                    <User size={15} style={{ color: WF.red }} />
+                    <h3 className="font-bold text-sm" style={{ color: WF.black }}>Select User</h3>
+                </div>
+                <div className="relative">
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl cursor-text"
+                        style={{ background: WF.bg, border: `1px solid ${WF.border}` }}
+                        onClick={() => setShowDropdown(true)}>
+                        <Search size={14} style={{ color: WF.muted }} />
+                        <input
+                            type="text"
+                            placeholder="Search user by email…"
+                            value={search}
+                            onChange={e => { setSearch(e.target.value); setShowDropdown(true); }}
+                            onFocus={() => setShowDropdown(true)}
+                            className="flex-1 text-sm outline-none bg-transparent"
+                            style={{ color: WF.black }}
+                        />
+                        <ChevronDown size={14} style={{ color: WF.muted }} />
+                    </div>
+                    {showDropdown && filteredUsers.length > 0 && (
+                        <div className="absolute z-20 w-full mt-1 rounded-xl shadow-xl overflow-hidden"
+                            style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
+                            {filteredUsers.slice(0, 8).map(u => (
+                                <button key={u.id} onClick={() => selectUser(u)}
+                                    className="w-full text-left px-4 py-3 text-sm transition-all hover:bg-gray-50 flex items-center gap-3"
+                                    style={{ borderBottom: `1px solid ${WF.border}` }}>
+                                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                                        style={{ background: WF.red }}>
+                                        {u.email?.[0]?.toUpperCase()}
+                                    </div>
+                                    <span style={{ color: WF.black }}>{u.email}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </Card>
+
+            {selectedUser && (
+                <div className="grid md:grid-cols-2 gap-6">
+
+                    {/* Add Transaction Form */}
+                    <Card className="p-5">
+                        <div className="flex items-center gap-2 mb-5">
+                            <PlusCircle size={15} style={{ color: WF.red }} />
+                            <h3 className="font-bold text-sm" style={{ color: WF.black }}>Add Transaction</h3>
+                        </div>
+                        <p className="text-xs mb-4" style={{ color: WF.muted }}>
+                            Adding to: <strong style={{ color: WF.black }}>{selectedUser.email}</strong>
+                        </p>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+
+                            {/* Direction toggle */}
+                            <div className="flex gap-2">
+                                {['DEPOSIT', 'WITHDRAWAL'].map(d => (
+                                    <button key={d} type="button"
+                                        onClick={() => setForm(prev => ({ ...prev, direction: d }))}
+                                        className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                                        style={{
+                                            background: form.direction === d
+                                                ? d === 'DEPOSIT' ? '#12B76A' : WF.red
+                                                : WF.bg,
+                                            color: form.direction === d ? '#fff' : WF.muted,
+                                            border: `1px solid ${form.direction === d ? 'transparent' : WF.border}`,
+                                        }}>
+                                        {d === 'DEPOSIT'
+                                            ? <ArrowDownLeft size={13} />
+                                            : <ArrowUpRight size={13} />}
+                                        {d}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Type */}
+                            <div>
+                                <label className="text-xs font-bold block mb-1.5" style={{ color: WF.black }}>Transaction Type</label>
+                                <select value={form.type} onChange={patch('type')}
+                                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none appearance-none"
+                                    style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.black }}>
+                                    {TX_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
+
+                            {/* Amount */}
+                            <div>
+                                <label className="text-xs font-bold block mb-1.5" style={{ color: WF.black }}>Amount ($)</label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-sm" style={{ color: WF.muted }}>$</span>
+                                    <input type="number" min="0.01" step="0.01" required
+                                        placeholder="0.00"
+                                        value={form.amount} onChange={patch('amount')}
+                                        className="w-full pl-8 pr-4 py-2.5 rounded-xl text-sm outline-none font-display font-bold"
+                                        style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.black }} />
+                                </div>
+                            </div>
+
+                            {/* Status */}
+                            <div>
+                                <label className="text-xs font-bold block mb-1.5" style={{ color: WF.black }}>Status</label>
+                                <select value={form.status} onChange={patch('status')}
+                                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none appearance-none"
+                                    style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.black }}>
+                                    <option value="COMPLETED">COMPLETED</option>
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="REJECTED">REJECTED</option>
+                                </select>
+                                <p className="text-[10px] mt-1" style={{ color: WF.muted }}>
+                                    COMPLETED deposits increase balance · COMPLETED withdrawals decrease balance
+                                </p>
+                            </div>
+
+                            {/* Note */}
+                            <div>
+                                <label className="text-xs font-bold block mb-1.5" style={{ color: WF.black }}>Note (optional)</label>
+                                <textarea rows={2} placeholder="e.g. Wire transfer from Chase Bank"
+                                    value={form.note} onChange={patch('note')}
+                                    className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
+                                    style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.black }} />
+                            </div>
+
+                            {successMsg && (
+                                <p className="text-xs font-bold p-3 rounded-xl" style={{ background: 'rgba(18,183,106,0.08)', color: '#14532D' }}>
+                                    ✓ {successMsg}
+                                </p>
+                            )}
+                            {errorMsg && (
+                                <p className="text-xs font-bold p-3 rounded-xl" style={{ background: 'rgba(215,30,40,0.08)', color: WF.red }}>
+                                    {errorMsg}
+                                </p>
+                            )}
+
+                            <button type="submit" disabled={submitting || !form.amount}
+                                className="w-full py-3 rounded-xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
+                                style={{ background: form.direction === 'DEPOSIT' ? '#12B76A' : WF.red }}>
+                                {submitting ? <Loader2 size={15} className="animate-spin" /> : <PlusCircle size={15} />}
+                                {submitting ? 'Adding…' : `Add ${form.direction}`}
+                            </button>
+                        </form>
+                    </Card>
+
+                    {/* Transaction History */}
+                    <Card className="p-5 flex flex-col">
+                        <div className="flex items-center gap-2 mb-4">
+                            <History size={15} style={{ color: WF.red }} />
+                            <h3 className="font-bold text-sm" style={{ color: WF.black }}>Transaction History</h3>
+                            <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
+                                style={{ background: 'rgba(215,30,40,0.08)', color: WF.red }}>
+                                {transactions.length} records
+                            </span>
+                        </div>
+
+                        {loadingTx ? (
+                            <div className="flex-1 flex items-center justify-center">
+                                <Loader2 size={20} className="animate-spin" style={{ color: WF.muted }} />
+                            </div>
+                        ) : transactions.length === 0 ? (
+                            <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8">
+                                <History size={28} style={{ color: WF.border }} />
+                                <p className="text-xs" style={{ color: WF.muted }}>No transactions yet</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 overflow-y-auto max-h-[500px]">
+                                {transactions.map(tx => (
+                                    <div key={tx.id} className="flex items-center gap-3 p-3 rounded-xl"
+                                        style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                                            style={{
+                                                background: tx.direction === 'DEPOSIT'
+                                                    ? 'rgba(18,183,106,0.1)' : 'rgba(215,30,40,0.08)',
+                                            }}>
+                                            {tx.direction === 'DEPOSIT'
+                                                ? <ArrowDownLeft size={14} style={{ color: '#12B76A' }} />
+                                                : <ArrowUpRight size={14} style={{ color: WF.red }} />}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-bold truncate" style={{ color: WF.black }}>
+                                                {tx.type} {tx.direction}
+                                            </p>
+                                            <p className="text-[10px]" style={{ color: WF.muted }}>
+                                                {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </p>
+                                        </div>
+                                        <div className="text-right flex-shrink-0">
+                                            <p className="text-sm font-bold"
+                                                style={{ color: tx.direction === 'DEPOSIT' ? '#12B76A' : WF.red }}>
+                                                {tx.direction === 'DEPOSIT' ? '+' : '-'}${fmt(tx.amount)}
+                                            </p>
+                                            <StatusBadge status={tx.status} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
+
+            {!selectedUser && (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                    <History size={36} style={{ color: WF.border }} />
+                    <p className="text-sm" style={{ color: WF.muted }}>Search and select a user above to view or add transactions</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminPanel() {
     const [authed, setAuthed] = useState(false);
-    const [tab, setTab] = useState<'chat' | 'balance' | 'transactions' | 'applications' | 'settings'>('balance');
+    const [tab, setTab] = useState<'chat' | 'balance' | 'transactions' | 'applications' | 'settings' | 'history'>('balance');
 
     useEffect(() => {
         if (sessionStorage.getItem(ADMIN_PASSWORD_KEY)) setAuthed(true);
@@ -1390,6 +1677,7 @@ export default function AdminPanel() {
     const tabs = [
         { id: 'balance' as const,       label: 'Users',          icon: Users        },
         { id: 'transactions' as const,  label: 'Transactions',   icon: TrendingUp   },
+        { id: 'history' as const,       label: 'History',        icon: History      },
         { id: 'applications' as const,  label: 'Applications',   icon: FileText     },
         { id: 'chat' as const,          label: 'Live Chat',      icon: MessageCircle},
         { id: 'settings' as const,      label: 'Payment Info',   icon: Settings     },
@@ -1437,6 +1725,7 @@ export default function AdminPanel() {
                 {tab === 'chat'         && <ChatTab />}
                 {tab === 'balance'      && <BalanceTab />}
                 {tab === 'transactions' && <TransactionsTab />}
+                {tab === 'history'      && <HistoryTab />}
                 {tab === 'settings'     && <PaymentSettingsTab />}
                 {tab === 'applications' && <ApplicationsTab />}
             </div>
