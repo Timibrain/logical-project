@@ -379,7 +379,7 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
                                                     <div>
                                                         <p className="text-xs font-bold" style={{ color: WF.red }}>Insufficient Funds</p>
                                                         <p className="text-xs mt-0.5" style={{ color: '#991B1B' }}>
-                                                            You need ${(amountNum - userBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })} more.{' '}
+                                                            You need ${(amountNum - balance).toLocaleString('en-US', { minimumFractionDigits: 2 })} more.{' '}
                                                             {onRequestDeposit && (
                                                                 <button onClick={() => { onClose(); onRequestDeposit(); }}
                                                                     className="font-bold underline">
