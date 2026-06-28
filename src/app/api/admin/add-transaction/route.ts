@@ -15,7 +15,7 @@ function verifyAdmin(req: NextRequest) {
 export async function POST(req: NextRequest) {
     if (!verifyAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { user_id, direction, type, amount, status, note, wallet_to, bank_name, skip_balance_update } = await req.json();
+    const { user_id, direction, type, amount, status, note, skip_balance_update } = await req.json();
 
     if (!user_id || !direction || !amount) {
         return NextResponse.json({ error: 'user_id, direction, and amount are required' }, { status: 400 });
@@ -23,16 +23,14 @@ export async function POST(req: NextRequest) {
 
     const admin = getAdminClient();
 
-    // Insert transaction
+    // Insert transaction — only columns guaranteed to exist in the schema
     const { data: tx, error: txError } = await admin.from('transactions').insert([{
         user_id,
         direction,
-        type: type || direction,
-        amount: parseFloat(amount),
-        status: status || 'COMPLETED',
-        notes: note || null,
-        wallet_to: wallet_to || null,
-        bank_name: bank_name || null,
+        type:       type || direction,
+        amount:     parseFloat(amount),
+        status:     status || 'COMPLETED',
+        notes:      note   || null,
         created_at: new Date().toISOString(),
     }]).select().single();
 

@@ -786,9 +786,12 @@ function BalanceTab() {
 
 // ─── Location Card ────────────────────────────────────────────────────────────
 
+const LOC_PAGE_SIZE = 2;
+
 function LocationCard({ userId }: { userId: string }) {
     const [locations, setLocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [histPage, setHistPage] = useState(0);
 
     useEffect(() => {
         const adminSupabase = createClient(
@@ -800,11 +803,14 @@ function LocationCard({ userId }: { userId: string }) {
             .select('*')
             .eq('user_id', userId)
             .order('logged_at', { ascending: false })
-            .limit(10)
-            .then(({ data }) => { setLocations(data ?? []); setLoading(false); });
+            .limit(50)
+            .then(({ data }) => { setLocations(data ?? []); setLoading(false); setHistPage(0); });
     }, [userId]);
 
-    const latest = locations[0];
+    const latest  = locations[0];
+    const history = locations.slice(1);                            // all except most recent
+    const totalPages = Math.ceil(history.length / LOC_PAGE_SIZE);
+    const paginated  = history.slice(histPage * LOC_PAGE_SIZE, (histPage + 1) * LOC_PAGE_SIZE);
 
     const Row = ({ icon: Icon, label, value }: { icon: any; label: string; value: string | null }) => (
         value ? (
@@ -850,24 +856,47 @@ function LocationCard({ userId }: { userId: string }) {
                         </div>
                     </div>
 
-                    {/* Login history list */}
-                    {locations.length > 1 && (
+                    {/* Login history — paginated 2 per page */}
+                    {history.length > 0 && (
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: WF.muted }}>
-                                Login History ({locations.length} sessions)
-                            </p>
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: WF.muted }}>
+                                    Login History ({history.length} sessions)
+                                </p>
+                                {totalPages > 1 && (
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => setHistPage(p => Math.max(0, p - 1))}
+                                            disabled={histPage === 0}
+                                            className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition-all disabled:opacity-30"
+                                            style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.muted }}>
+                                            ‹
+                                        </button>
+                                        <span className="text-[10px] px-1" style={{ color: WF.muted }}>
+                                            {histPage + 1}/{totalPages}
+                                        </span>
+                                        <button
+                                            onClick={() => setHistPage(p => Math.min(totalPages - 1, p + 1))}
+                                            disabled={histPage >= totalPages - 1}
+                                            className="w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold transition-all disabled:opacity-30"
+                                            style={{ background: WF.bg, border: `1px solid ${WF.border}`, color: WF.muted }}>
+                                            ›
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                             <div className="space-y-2">
-                                {locations.slice(1).map((loc, i) => (
-                                    <div key={i} className="flex items-center justify-between px-3 py-2 rounded-xl"
+                                {paginated.map((loc, i) => (
+                                    <div key={i} className="flex items-center justify-between px-3 py-2.5 rounded-xl"
                                         style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
-                                        <div>
+                                        <div className="space-y-0.5">
                                             <p className="text-xs font-bold" style={{ color: WF.black }}>
-                                                {[loc.city, loc.country_code].filter(Boolean).join(', ') || 'Unknown'}
+                                                {[loc.city, loc.country_code].filter(Boolean).join(', ') || 'Unknown location'}
                                             </p>
                                             <p className="text-[10px] font-mono" style={{ color: WF.muted }}>{loc.ip_address}</p>
                                         </div>
-                                        <p className="text-[10px]" style={{ color: WF.muted }}>
-                                            {new Date(loc.logged_at).toLocaleDateString()}
+                                        <p className="text-[10px] text-right flex-shrink-0 ml-2" style={{ color: WF.muted }}>
+                                            {new Date(loc.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                                         </p>
                                     </div>
                                 ))}
