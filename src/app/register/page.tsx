@@ -186,7 +186,7 @@ export default function RegisterPage() {
                             <div>
                                 <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: WF.muted }}>First Name</label>
                                 <input type="text" value={form.firstName} onChange={set('firstName')}
-                                    placeholder="Jane" required
+                                    placeholder="First Name" required
                                     className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
                                     style={fieldStyle}
                                     onFocus={e => { e.target.style.borderColor = WF.red; }}
@@ -195,7 +195,7 @@ export default function RegisterPage() {
                             <div>
                                 <label className="block text-xs font-bold mb-1.5 uppercase tracking-wider" style={{ color: WF.muted }}>Last Name</label>
                                 <input type="text" value={form.lastName} onChange={set('lastName')}
-                                    placeholder="Doe" required
+                                    placeholder="Last Name" required
                                     className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
                                     style={fieldStyle}
                                     onFocus={e => { e.target.style.borderColor = WF.red; }}
