@@ -43,7 +43,7 @@ const PORTFOLIOS: Portfolio[] = [
         icon: Shield,
         accent: '#0369A1',
         accentBg: 'rgba(3,105,161,0.06)',
-        minAmount: 500,
+        minAmount: 10000,
         allocation: [
             { label: 'Bonds', pct: 60, color: '#0369A1' },
             { label: 'Money Market', pct: 25, color: '#7DD3FC' },
@@ -60,7 +60,7 @@ const PORTFOLIOS: Portfolio[] = [
         icon: BarChart3,
         accent: WF.red,
         accentBg: 'rgba(215,30,40,0.05)',
-        minAmount: 1000,
+        minAmount: 10000,
         allocation: [
             { label: 'Equities', pct: 50, color: WF.red },
             { label: 'Bonds', pct: 35, color: '#FCA5A5' },
@@ -77,7 +77,7 @@ const PORTFOLIOS: Portfolio[] = [
         icon: Zap,
         accent: '#7F56D9',
         accentBg: 'rgba(127,86,217,0.05)',
-        minAmount: 2500,
+        minAmount: 50000,
         allocation: [
             { label: 'Growth Stocks', pct: 70, color: '#7F56D9' },
             { label: 'Crypto', pct: 20, color: '#A78BFA' },
