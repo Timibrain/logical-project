@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, CheckCircle, ChevronRight, ChevronLeft, TrendingUp,
-    Shield, BarChart3, Zap, Loader2, Check, AlertCircle, Info
+    Shield, BarChart3, Zap, Loader2, Check, AlertCircle, Info, Calendar
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -37,7 +37,7 @@ const PORTFOLIOS: Portfolio[] = [
         id: 'conservative',
         label: 'Conservative',
         tagline: 'Stability & income preservation',
-        expectedReturn: '3–5% / yr',
+        expectedReturn: '30–50% / mo',
         risk: 'Low Risk',
         riskColor: '#16A34A',
         icon: Shield,
@@ -54,7 +54,7 @@ const PORTFOLIOS: Portfolio[] = [
         id: 'balanced',
         label: 'Balanced',
         tagline: 'Growth with moderate risk',
-        expectedReturn: '7–9% / yr',
+        expectedReturn: '30–50% / mo',
         risk: 'Medium Risk',
         riskColor: '#D97706',
         icon: BarChart3,
@@ -71,7 +71,7 @@ const PORTFOLIOS: Portfolio[] = [
         id: 'aggressive',
         label: 'Aggressive',
         tagline: 'Maximum growth potential',
-        expectedReturn: '12–18% / yr',
+        expectedReturn: '30–50% / mo',
         risk: 'High Risk',
         riskColor: '#DC2626',
         icon: Zap,
@@ -126,13 +126,18 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
     const [agreed, setAgreed] = useState(false);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [durationType, setDurationType] = useState<'months' | 'years'>('months');
+    const [durationValue, setDurationValue] = useState<number>(3);
 
     const portfolio = PORTFOLIOS.find(p => p.id === selected) ?? null;
     const amountNum = parseFloat(amount) || 0;
     const insufficientFunds = portfolio ? amountNum > balance : false;
 
     const isStep1Valid = selected !== null;
-    const isStep2Valid = portfolio !== null && amountNum >= (portfolio?.minAmount ?? 0) && !insufficientFunds && agreed;
+    const isStep2Valid = portfolio !== null && amountNum >= (portfolio?.minAmount ?? 0) && !insufficientFunds && agreed && durationValue > 0;
+
+    const MONTH_OPTIONS = [1, 3, 6, 12, 18, 24];
+    const YEAR_OPTIONS  = [1, 2, 3, 5, 10];
 
     const handleConfirm = async () => {
         if (!isStep2Valid || !portfolio) return;
@@ -144,6 +149,8 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
             portfolio_label: portfolio.label,
             amount: amountNum,
             status: 'ACTIVE',
+            duration_value: durationValue,
+            duration_type: durationType,
             created_at: new Date().toISOString(),
         }]);
 
@@ -211,7 +218,8 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
                                 <h3 className="font-display text-2xl font-bold" style={{ color: WF.black }}>Investment Activated!</h3>
                                 <p className="text-sm max-w-xs leading-relaxed" style={{ color: WF.muted }}>
                                     <strong style={{ color: WF.black }}>${amountNum.toLocaleString()}</strong> has been allocated to the{' '}
-                                    <strong style={{ color: WF.black }}>{portfolio?.label}</strong> portfolio.
+                                    <strong style={{ color: WF.black }}>{portfolio?.label}</strong> portfolio for{' '}
+                                    <strong style={{ color: WF.black }}>{durationValue} {durationType === 'months' ? (durationValue === 1 ? 'month' : 'months') : (durationValue === 1 ? 'year' : 'years')}</strong>.
                                     Track performance from your dashboard.
                                 </p>
 
@@ -336,7 +344,7 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
                                             <div className="flex-1">
                                                 <p className="text-xs font-bold" style={{ color: WF.black }}>{portfolio.label} Portfolio</p>
                                                 <p className="text-[10px]" style={{ color: WF.muted }}>
-                                                    {portfolio.expectedReturn} expected · {portfolio.risk}
+                                                    {portfolio.expectedReturn} expected · {portfolio.risk} · {durationValue} {durationType === 'months' ? (durationValue === 1 ? 'month' : 'months') : (durationValue === 1 ? 'year' : 'years')}
                                                 </p>
                                             </div>
                                             <button onClick={() => setStep(1)} className="text-[10px] font-bold underline" style={{ color: portfolio.accent }}>
@@ -405,6 +413,59 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
                                                     ${q.toLocaleString()}
                                                 </button>
                                             ))}
+                                        </div>
+
+                                        {/* Duration picker */}
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-3">
+                                                <Calendar size={14} style={{ color: WF.muted }} />
+                                                <label className="text-xs font-bold" style={{ color: WF.black }}>
+                                                    Investment Duration <span style={{ color: WF.red }}>*</span>
+                                                </label>
+                                            </div>
+
+                                            {/* Months / Years toggle */}
+                                            <div className="flex gap-2 p-1 rounded-xl mb-3 w-fit"
+                                                style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                                {(['months', 'years'] as const).map(t => (
+                                                    <button key={t} onClick={() => { setDurationType(t); setDurationValue(t === 'months' ? 3 : 1); }}
+                                                        className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all capitalize"
+                                                        style={{
+                                                            background: durationType === t ? WF.red : 'transparent',
+                                                            color: durationType === t ? '#fff' : WF.muted,
+                                                        }}>
+                                                        {t}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* Duration options */}
+                                            <div className="flex gap-2 flex-wrap">
+                                                {(durationType === 'months' ? MONTH_OPTIONS : YEAR_OPTIONS).map(n => (
+                                                    <button key={n} onClick={() => setDurationValue(n)}
+                                                        className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
+                                                        style={{
+                                                            background: durationValue === n ? WF.red : WF.surface,
+                                                            color: durationValue === n ? '#fff' : WF.muted,
+                                                            border: `1px solid ${durationValue === n ? WF.red : WF.border}`,
+                                                        }}>
+                                                        {n} {durationType === 'months' ? (n === 1 ? 'month' : 'months') : (n === 1 ? 'year' : 'years')}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* Est. return preview */}
+                                            {amountNum >= (portfolio?.minAmount ?? 0) && (
+                                                <div className="mt-3 p-3 rounded-xl flex items-center justify-between"
+                                                    style={{ background: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.15)' }}>
+                                                    <span className="text-xs" style={{ color: WF.muted }}>Est. return after {durationValue} {durationType === 'months' ? (durationValue === 1 ? 'month' : 'months') : (durationValue === 1 ? 'year' : 'years')}</span>
+                                                    <span className="text-sm font-bold" style={{ color: '#16A34A' }}>
+                                                        +${(amountNum * 0.30 * (durationType === 'months' ? durationValue : durationValue * 12)).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                                        {' '}–{' '}
+                                                        +${(amountNum * 0.50 * (durationType === 'months' ? durationValue : durationValue * 12)).toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Risk disclaimer */}
