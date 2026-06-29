@@ -1344,6 +1344,117 @@ function TransactionsTab() {
     );
 }
 
+// ─── Investments Tab ──────────────────────────────────────────────────────────
+
+function InvestmentsTab() {
+    const [investments, setInvestments] = useState<any[]>([]);
+    const [loading, setLoading]         = useState(true);
+    const [filter, setFilter]           = useState<'ALL' | 'ACTIVE' | 'COMPLETED'>('ALL');
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        const res  = await adminFetch('/api/admin/investments');
+        const data = await res.json();
+        setInvestments(data.investments ?? []);
+        setLoading(false);
+    }, []);
+
+    useEffect(() => { load(); }, [load]);
+
+    const filtered = investments.filter(i => filter === 'ALL' || i.status === filter);
+    const totalInvested = investments.reduce((s, i) => s + Number(i.amount ?? 0), 0);
+
+    const portfolioColor: Record<string, string> = {
+        conservative: '#0369A1',
+        balanced:     '#D71E28',
+        aggressive:   '#7F56D9',
+    };
+
+    return (
+        <div className="p-6 md:p-8 overflow-y-auto h-full" style={{ background: WF.bg }}>
+            <div className="max-w-3xl mx-auto">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="font-display text-xl font-bold" style={{ color: WF.black }}>Investments</h2>
+                        <p className="text-xs mt-0.5" style={{ color: WF.muted }}>
+                            {investments.length} total · ${fmt(totalInvested)} invested
+                        </p>
+                    </div>
+                </div>
+
+                <FilterBar
+                    options={['ALL', 'ACTIVE', 'COMPLETED']}
+                    value={filter}
+                    onChange={v => setFilter(v as any)}
+                    onRefresh={load}
+                />
+
+                {loading && (
+                    <div className="flex items-center justify-center py-16">
+                        <Loader2 size={24} className="animate-spin" style={{ color: WF.muted }} />
+                    </div>
+                )}
+
+                {!loading && filtered.length === 0 && (
+                    <div className="text-center py-16">
+                        <TrendingUp size={28} className="mx-auto mb-3" style={{ color: WF.border }} />
+                        <p className="text-sm font-bold" style={{ color: WF.black }}>No investments yet</p>
+                        <p className="text-xs mt-1" style={{ color: WF.muted }}>They'll appear here once users invest.</p>
+                    </div>
+                )}
+
+                <div className="space-y-4">
+                    {filtered.map(inv => {
+                        const accent = portfolioColor[inv.portfolio_id] ?? WF.muted;
+                        const dur = inv.duration_value
+                            ? `${inv.duration_value} ${inv.duration_type ?? 'months'}`
+                            : '—';
+                        return (
+                            <Card key={inv.id} className="p-5">
+                                <div className="flex items-start justify-between mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                            style={{ background: `${accent}15` }}>
+                                            <TrendingUp size={16} style={{ color: accent }} />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold capitalize" style={{ color: WF.black }}>
+                                                {inv.portfolio_label ?? inv.portfolio_id} Portfolio
+                                            </p>
+                                            <p className="text-xs" style={{ color: WF.muted }}>{inv.user_email}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-base font-bold" style={{ color: WF.black }}>
+                                            ${fmt(inv.amount)}
+                                        </p>
+                                        <StatusBadge status={inv.status ?? 'ACTIVE'} />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-3 gap-2 pt-3"
+                                    style={{ borderTop: `1px solid ${WF.border}` }}>
+                                    {[
+                                        { label: 'Duration', value: dur },
+                                        { label: 'Est. Return', value: '30–50% / mo' },
+                                        { label: 'Date', value: new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
+                                    ].map(({ label, value }) => (
+                                        <div key={label} className="p-2 rounded-xl text-center"
+                                            style={{ background: WF.bg }}>
+                                            <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5" style={{ color: WF.muted }}>{label}</p>
+                                            <p className="text-xs font-bold" style={{ color: WF.black }}>{value}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Applications Tab ─────────────────────────────────────────────────────────
 
 function ApplicationsTab() {
@@ -2012,7 +2123,7 @@ function HistoryTab() {
 
 export default function AdminPanel() {
     const [authed, setAuthed] = useState(false);
-    const [tab, setTab] = useState<'chat' | 'balance' | 'transactions' | 'applications' | 'settings' | 'history'>('balance');
+    const [tab, setTab] = useState<'chat' | 'balance' | 'transactions' | 'applications' | 'settings' | 'history' | 'investments'>('balance');
 
     useEffect(() => {
         if (sessionStorage.getItem(ADMIN_PASSWORD_KEY)) setAuthed(true);
@@ -2021,12 +2132,13 @@ export default function AdminPanel() {
     if (!authed) return <PasswordGate onAuth={() => setAuthed(true)} />;
 
     const tabs = [
-        { id: 'balance' as const,       label: 'Users',          icon: Users        },
-        { id: 'transactions' as const,  label: 'Transactions',   icon: TrendingUp   },
-        { id: 'history' as const,       label: 'History',        icon: History      },
-        { id: 'applications' as const,  label: 'Applications',   icon: FileText     },
-        { id: 'chat' as const,          label: 'Live Chat',      icon: MessageCircle},
-        { id: 'settings' as const,      label: 'Payment Info',   icon: Settings     },
+        { id: 'balance' as const,      label: 'Users',        icon: Users         },
+        { id: 'transactions' as const, label: 'Transactions', icon: TrendingUp    },
+        { id: 'investments' as const,  label: 'Investments',  icon: PlusCircle    },
+        { id: 'applications' as const, label: 'Applications', icon: FileText      },
+        { id: 'history' as const,      label: 'History',      icon: History       },
+        { id: 'chat' as const,         label: 'Live Chat',    icon: MessageCircle },
+        { id: 'settings' as const,     label: 'Payment Info', icon: Settings      },
     ];
 
     return (
@@ -2068,6 +2180,7 @@ export default function AdminPanel() {
                 {tab === 'chat'         && <ChatTab />}
                 {tab === 'balance'      && <BalanceTab />}
                 {tab === 'transactions' && <TransactionsTab />}
+                {tab === 'investments'  && <InvestmentsTab />}
                 {tab === 'history'      && <HistoryTab />}
                 {tab === 'settings'     && <PaymentSettingsTab />}
                 {tab === 'applications' && <ApplicationsTab />}

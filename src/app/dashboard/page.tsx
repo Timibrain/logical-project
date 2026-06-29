@@ -521,7 +521,7 @@ export default function Dashboard() {
                         { icon: Landmark, color: WF.red, bg: 'rgba(215,30,40,0.08)', title: 'Loans', sub: 'Personal & Business', cta: 'Apply Now', action: () => setIsLoanOpen(true) },
                         { icon: HandCoins, color: '#12B76A', bg: 'rgba(18,183,106,0.08)', title: 'Grants', sub: 'Federal & State', cta: 'Check Status', action: () => setIsGrantOpen(true) },
                         { icon: ReceiptText, color: '#7F56D9', bg: 'rgba(127,86,217,0.08)', title: 'Tax Refunds', sub: 'Express Processing', cta: 'Claim Now', action: () => setIsTaxOpen(true) },
-                        { icon: TrendingUp, color: WF.goldDark, bg: 'rgba(201,148,26,0.1)', title: 'Investments', sub: 'Start with $500', cta: 'View Portfolio', action: () => setIsInvestOpen(true) },
+                        { icon: TrendingUp, color: WF.goldDark, bg: 'rgba(201,148,26,0.1)', title: 'Investments', sub: 'Start with $10,000', cta: 'View Portfolio', action: () => setIsInvestOpen(true) },
                     ].map(({ icon: Icon, color, bg, title, sub, cta, action }) => (
                         <div key={title} className="p-5 rounded-[16px] shadow-sm transition-all hover:shadow-md cursor-pointer"
                             style={{ background: WF.surface, border: `1px solid ${WF.border}` }}
