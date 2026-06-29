@@ -63,6 +63,10 @@ export default function Dashboard() {
     const [isInvestOpen, setIsInvestOpen] = useState(false);
     const [isAddWalletOpen, setIsAddWalletOpen] = useState(false);
 
+    // Investments
+    const [investments, setInvestments] = useState<any[]>([]);
+    const [showPortfolioReport, setShowPortfolioReport] = useState(false);
+
     // Card carousel
     const [activeCard, setActiveCard] = useState(0);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -92,6 +96,15 @@ export default function Dashboard() {
             const { data: profile } = await supabase
                 .from('profiles').select('balance').eq('id', session.user.id).single();
             setCurrentBalance(profile?.balance ?? 0);
+
+            // Load investments
+            const { data: invData } = await supabase
+                .from('investments')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .order('created_at', { ascending: false });
+            setInvestments(invData ?? []);
+
             setLoading(false);
             // Log user location silently on each login
             fetch('/api/log-location', {
@@ -542,46 +555,206 @@ export default function Dashboard() {
 
             {/* ─── PORTFOLIO ──────────────────────────────────────────────── */}
             <section className="px-6 mb-8">
-                <div className="rounded-[20px] p-6 shadow-sm"
-                    style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <h3 className="text-sm font-bold font-display" style={{ color: WF.black }}>Portfolio Analysis</h3>
-                            <div className="w-6 h-0.5 mt-1 rounded" style={{ background: WF.gold }}></div>
-                            <p className="text-[10px] mt-2" style={{ color: WF.muted }}>Risk Profile: Conservative</p>
-                        </div>
-                        <div className="p-2 rounded-lg" style={{ background: WF.bg }}>
-                            <PieChart size={16} style={{ color: WF.muted }} />
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                            {[
-                                { label: 'Bonds (82%)', color: WF.red },
-                                { label: 'Stocks (16%)', color: WF.gold },
-                                { label: 'Cash (2%)', color: '#12B76A' },
-                            ].map(({ label, color }) => (
-                                <div key={label} className="flex items-center gap-2">
-                                    <span className="w-2 h-2 rounded-full" style={{ background: color }}></span>
-                                    <span className="text-[10px] font-medium" style={{ color: WF.muted }}>{label}</span>
+                {(() => {
+                    const PORTFOLIO_META: Record<string, { color: string; label: string }> = {
+                        conservative: { color: '#0369A1', label: 'Conservative' },
+                        balanced:     { color: WF.red,   label: 'Balanced'      },
+                        aggressive:   { color: '#7F56D9', label: 'Aggressive'   },
+                    };
+                    const totalInvested = investments.reduce((s, i) => s + Number(i.amount ?? 0), 0);
+                    const byPortfolio = investments.reduce((acc: Record<string, number>, inv) => {
+                        acc[inv.portfolio_id] = (acc[inv.portfolio_id] ?? 0) + Number(inv.amount ?? 0);
+                        return acc;
+                    }, {});
+                    const slices = Object.entries(byPortfolio).map(([id, amt]) => ({
+                        id, amt,
+                        pct: totalInvested > 0 ? Math.round((amt / totalInvested) * 100) : 0,
+                        ...PORTFOLIO_META[id] ?? { color: WF.muted, label: id },
+                    }));
+
+                    // SVG donut
+                    const circ = 2 * Math.PI * 40; // ≈251.3
+                    let offset = 0;
+                    const segments = slices.map(s => {
+                        const dash = (s.pct / 100) * circ;
+                        const seg = { ...s, dash, offset };
+                        offset += dash;
+                        return seg;
+                    });
+
+                    return (
+                        <div className="rounded-[20px] p-6 shadow-sm"
+                            style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 className="text-sm font-bold font-display" style={{ color: WF.black }}>Portfolio Analysis</h3>
+                                    <div className="w-6 h-0.5 mt-1 rounded" style={{ background: WF.gold }} />
+                                    <p className="text-[10px] mt-2" style={{ color: WF.muted }}>
+                                        {investments.length > 0
+                                            ? `${investments.length} active investment${investments.length > 1 ? 's' : ''}`
+                                            : 'No investments yet'}
+                                    </p>
                                 </div>
-                            ))}
+                                <div className="p-2 rounded-lg" style={{ background: WF.bg }}>
+                                    <PieChart size={16} style={{ color: WF.muted }} />
+                                </div>
+                            </div>
+
+                            {investments.length === 0 ? (
+                                <div className="text-center py-6">
+                                    <p className="text-xs" style={{ color: WF.muted }}>
+                                        You have no active investments.
+                                    </p>
+                                    <button onClick={() => setIsInvestOpen(true)}
+                                        className="mt-3 px-4 py-2 rounded-xl text-xs font-bold text-white"
+                                        style={{ background: WF.red }}>
+                                        Start Investing
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between">
+                                        <div className="space-y-2">
+                                            {slices.map(s => (
+                                                <div key={s.id} className="flex items-center gap-2">
+                                                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                                                    <span className="text-[10px] font-medium" style={{ color: WF.muted }}>
+                                                        {s.label} ({s.pct}%)
+                                                    </span>
+                                                </div>
+                                            ))}
+                                            <div className="pt-1 border-t" style={{ borderColor: WF.border }}>
+                                                <p className="text-[10px] font-bold" style={{ color: WF.black }}>
+                                                    Total: ${fmt(totalInvested)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="relative w-32 h-32">
+                                            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                                                <circle cx="50" cy="50" r="40" fill="none" stroke={WF.border} strokeWidth="12" />
+                                                {segments.map(seg => (
+                                                    <circle key={seg.id} cx="50" cy="50" r="40" fill="none"
+                                                        stroke={seg.color} strokeWidth="12"
+                                                        strokeDasharray={`${seg.dash} ${circ}`}
+                                                        strokeDashoffset={-seg.offset}
+                                                    />
+                                                ))}
+                                            </svg>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                <p className="text-[9px] font-bold" style={{ color: WF.muted }}>INVESTED</p>
+                                                <p className="text-xs font-bold" style={{ color: WF.black }}>
+                                                    ${totalInvested >= 1000
+                                                        ? `${(totalInvested / 1000).toFixed(1)}k`
+                                                        : fmt(totalInvested)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setShowPortfolioReport(true)}
+                                        className="w-full mt-6 py-3 rounded-xl text-[11px] font-bold transition-colors hover:shadow-sm"
+                                        style={{ border: `1px solid ${WF.border}`, color: WF.black }}>
+                                        View Full Report
+                                    </button>
+                                </>
+                            )}
                         </div>
-                        <div className="relative w-32 h-32">
-                            <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                                <circle cx="50" cy="50" r="40" fill="none" stroke={WF.border} strokeWidth="12" />
-                                <circle cx="50" cy="50" r="40" fill="none" stroke={WF.red} strokeWidth="12" strokeDasharray="206 251" strokeDashoffset="0" />
-                                <circle cx="50" cy="50" r="40" fill="none" stroke={WF.gold} strokeWidth="12" strokeDasharray="40 251" strokeDashoffset="-206" />
-                                <circle cx="50" cy="50" r="40" fill="none" stroke="#12B76A" strokeWidth="12" strokeDasharray="5 251" strokeDashoffset="-246" />
-                            </svg>
+                    );
+                })()}
+            </section>
+
+            {/* ─── PORTFOLIO REPORT MODAL ─────────────────────────────────── */}
+            {showPortfolioReport && (
+                <div className="fixed inset-0 z-[100] flex items-end justify-center font-sans">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowPortfolioReport(false)} />
+                    <div className="relative w-full max-w-lg rounded-t-3xl overflow-hidden flex flex-col"
+                        style={{ background: WF.bg, maxHeight: '92dvh' }}>
+                        {/* Header */}
+                        <div className="px-6 pt-5 pb-4 flex items-center justify-between flex-shrink-0"
+                            style={{ background: WF.surface, borderBottom: `1px solid ${WF.border}` }}>
+                            <div>
+                                <h2 className="font-display text-lg font-bold" style={{ color: WF.black }}>Full Portfolio Report</h2>
+                                <p className="text-[11px]" style={{ color: WF.muted }}>{investments.length} investment{investments.length !== 1 ? 's' : ''} · 30–50% / mo est. return</p>
+                            </div>
+                            <button onClick={() => setShowPortfolioReport(false)}
+                                className="w-8 h-8 rounded-full flex items-center justify-center"
+                                style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                <ChevronRight size={14} style={{ color: WF.muted, transform: 'rotate(90deg)' }} />
+                            </button>
+                        </div>
+                        {/* Body */}
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {investments.map((inv, i) => {
+                                const COLORS: Record<string, string> = {
+                                    conservative: '#0369A1', balanced: WF.red, aggressive: '#7F56D9',
+                                };
+                                const accent = COLORS[inv.portfolio_id] ?? WF.muted;
+                                const dur = inv.duration_value
+                                    ? `${inv.duration_value} ${inv.duration_type ?? 'months'}`
+                                    : '—';
+                                const low  = Number(inv.amount) * 0.30 * (inv.duration_type === 'years' ? inv.duration_value * 12 : inv.duration_value ?? 1);
+                                const high = Number(inv.amount) * 0.50 * (inv.duration_type === 'years' ? inv.duration_value * 12 : inv.duration_value ?? 1);
+                                return (
+                                    <div key={inv.id} className="p-4 rounded-2xl"
+                                        style={{ background: WF.surface, border: `1px solid ${WF.border}` }}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                                                    style={{ background: `${accent}15` }}>
+                                                    <TrendingUp size={14} style={{ color: accent }} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-bold capitalize" style={{ color: WF.black }}>
+                                                        {inv.portfolio_label ?? inv.portfolio_id}
+                                                    </p>
+                                                    <p className="text-[10px]" style={{ color: WF.muted }}>Started {new Date(inv.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm font-bold" style={{ color: WF.black }}>${fmt(Number(inv.amount))}</p>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { label: 'Duration', value: dur },
+                                                { label: 'Est. Return', value: '30–50% / mo' },
+                                                { label: 'Projected', value: `+$${Math.round(low / 1000)}k–$${Math.round(high / 1000)}k` },
+                                            ].map(({ label, value }) => (
+                                                <div key={label} className="p-2 rounded-xl text-center"
+                                                    style={{ background: WF.bg }}>
+                                                    <p className="text-[9px] font-bold uppercase tracking-wide mb-0.5" style={{ color: WF.muted }}>{label}</p>
+                                                    <p className="text-[11px] font-bold" style={{ color: label === 'Projected' ? '#16A34A' : WF.black }}>{value}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {/* Summary */}
+                            <div className="p-4 rounded-2xl"
+                                style={{ background: 'rgba(215,30,40,0.04)', border: '1px solid rgba(215,30,40,0.12)' }}>
+                                <p className="text-xs font-bold mb-2" style={{ color: WF.black }}>Total Summary</p>
+                                <div className="space-y-1.5">
+                                    {[
+                                        { label: 'Total Invested', value: `$${fmt(investments.reduce((s, i) => s + Number(i.amount), 0))}` },
+                                        { label: 'Active Plans',   value: String(investments.length) },
+                                        { label: 'Est. Monthly Return', value: '30–50%' },
+                                    ].map(({ label, value }) => (
+                                        <div key={label} className="flex items-center justify-between">
+                                            <span className="text-[11px]" style={{ color: WF.muted }}>{label}</span>
+                                            <span className="text-[11px] font-bold" style={{ color: WF.black }}>{value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button onClick={() => { setShowPortfolioReport(false); setIsInvestOpen(true); }}
+                                className="w-full py-3.5 rounded-xl text-white font-bold text-sm"
+                                style={{ background: WF.red }}>
+                                + Add Another Investment
+                            </button>
                         </div>
                     </div>
-                    <button className="w-full mt-6 py-3 rounded-xl text-[11px] font-bold transition-colors"
-                        style={{ border: `1px solid ${WF.border}`, color: WF.black }}>
-                        View Full Report
-                    </button>
                 </div>
-            </section>
+            )}
 
             {/* ─── SUPPORT ────────────────────────────────────────────────── */}
             <section className="px-6 mb-8 space-y-4">
