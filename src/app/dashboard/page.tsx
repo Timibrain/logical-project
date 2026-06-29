@@ -111,7 +111,7 @@ export default function Dashboard() {
             .select('*')
             .eq('user_id', uid)
             .order('created_at', { ascending: false })
-            .limit(5);
+            .limit(3);
         setTransactions(data ?? []);
         setTxLoading(false);
     }, []);

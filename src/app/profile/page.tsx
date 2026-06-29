@@ -1,18 +1,57 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import BottomNav from '@/components/BottomNav';
 import {
     ArrowLeft, User, Shield, Bell, ChevronRight,
-    LogOut, Mail, Phone, MapPin, Lock, Eye, EyeOff, Loader2, CheckCircle
+    LogOut, Mail, Phone, MapPin, Lock, Eye, EyeOff, Loader2, CheckCircle,
+    Smartphone, ShieldCheck, ShieldOff, Check
 } from 'lucide-react';
 
 const WF = {
     red: '#D71E28', gold: '#FFCD41', black: '#1A1A1A',
     bg: '#FAF8F5', surface: '#FFFFFF', border: '#E8E2DA', muted: '#6B6560',
 };
+
+// 6-digit OTP input component
+function OtpInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+    const refs = useRef<(HTMLInputElement | null)[]>([]);
+    const digits = value.padEnd(6, '').slice(0, 6).split('');
+    function handleChange(i: number, raw: string) {
+        const clean = raw.replace(/\D/g, '');
+        if (clean.length > 1) { onChange(clean.slice(0, 6)); refs.current[Math.min(5, clean.length - 1)]?.focus(); return; }
+        const next = digits.map((d, j) => j === i ? clean : d).join('').trimEnd();
+        onChange(next);
+        if (clean && i < 5) setTimeout(() => refs.current[i + 1]?.focus(), 0);
+    }
+    function handleKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === 'Backspace') {
+            const next = digits.map((d, j) => j === i ? '' : d).join('').trimEnd();
+            onChange(next);
+            if (i > 0) setTimeout(() => refs.current[i - 1]?.focus(), 0);
+        }
+    }
+    return (
+        <div className="flex gap-2 justify-center">
+            {Array.from({ length: 6 }).map((_, i) => (
+                <input key={i} ref={el => { refs.current[i] = el; }}
+                    type="text" inputMode="numeric" maxLength={6}
+                    value={digits[i] ?? ''}
+                    onChange={e => handleChange(i, e.target.value)}
+                    onKeyDown={e => handleKey(i, e)}
+                    onFocus={e => e.target.select()}
+                    className="w-10 h-12 rounded-xl text-center text-lg font-bold outline-none transition-all"
+                    style={{
+                        background: digits[i] ? 'rgba(215,30,40,0.05)' : WF.bg,
+                        border: `2px solid ${digits[i] ? WF.red : WF.border}`,
+                        color: WF.black,
+                    }} />
+            ))}
+        </div>
+    );
+}
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -28,10 +67,26 @@ export default function ProfilePage() {
     const [pwLoading, setPwLoading] = useState(false);
     const [pwMsg, setPwMsg] = useState('');
 
+    // 2FA state
+    const [factors, setFactors]       = useState<any[]>([]);
+    const [enrolling, setEnrolling]   = useState(false);
+    const [qrCode, setQrCode]         = useState('');
+    const [secret, setSecret]         = useState('');
+    const [mfaFactorId, setMfaFactorId] = useState('');
+    const [otp, setOtp]               = useState('');
+    const [mfaErr, setMfaErr]         = useState('');
+    const [mfaOk, setMfaOk]           = useState(false);
+    const [disabling, setDisabling]   = useState(false);
+
     // Notification prefs
     const [notifications, setNotifications] = useState({
         deposits: true, withdrawals: true, promotions: false, security: true,
     });
+
+    async function loadFactors() {
+        const { data } = await supabase.auth.mfa.listFactors();
+        setFactors(data?.totp ?? []);
+    }
 
     useEffect(() => {
         const init = async () => {
@@ -40,10 +95,40 @@ export default function ProfilePage() {
             setUser(session.user);
             const { data: profile } = await supabase.from('profiles').select('balance').eq('id', session.user.id).single();
             setBalance(profile?.balance ?? 0);
+            await loadFactors();
             setLoading(false);
         };
         init();
     }, [router]);
+
+    async function startEnroll() {
+        setMfaErr(''); setMfaOk(false);
+        const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+        if (error || !data) { setMfaErr(error?.message ?? 'Enrollment failed.'); return; }
+        setQrCode(data.totp.qr_code);
+        setSecret(data.totp.secret);
+        setMfaFactorId(data.id);
+        setEnrolling(true);
+    }
+
+    async function verifyEnroll() {
+        if (otp.length !== 6) return;
+        setMfaErr('');
+        const { data: challenge, error: cErr } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
+        if (cErr || !challenge) { setMfaErr('Challenge failed. Try again.'); return; }
+        const { error: vErr } = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: challenge.id, code: otp });
+        if (vErr) { setMfaErr('Incorrect code. Try again.'); setOtp(''); return; }
+        setMfaOk(true); setEnrolling(false); setOtp('');
+        await loadFactors();
+    }
+
+    async function disableFactor(id: string) {
+        if (!confirm('Disable 2FA? You will only need your password to sign in.')) return;
+        setDisabling(true);
+        await supabase.auth.mfa.unenroll({ factorId: id });
+        await loadFactors();
+        setDisabling(false); setMfaOk(false);
+    }
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -172,11 +257,91 @@ export default function ProfilePage() {
                         </form>
                     )}
 
-                    <div className="px-5 py-3.5 flex items-center justify-between">
-                        <span className="text-xs" style={{ color: WF.muted }}>Two-Factor Authentication</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(245,158,11,0.1)', color: '#92400E' }}>Coming Soon</span>
-                    </div>
+                    {/* 2FA row */}
+                    {(() => {
+                        const verified = factors.filter(f => f.status === 'verified');
+                        const enabled = verified.length > 0;
+                        return (
+                            <div>
+                                <div className="px-5 py-3.5 flex items-center justify-between"
+                                    style={{ borderTop: `1px solid ${WF.border}`, borderBottom: enrolling ? `1px solid ${WF.border}` : 'none' }}>
+                                    <div className="flex items-center gap-2">
+                                        {enabled
+                                            ? <ShieldCheck size={14} style={{ color: '#16A34A' }} />
+                                            : <Smartphone size={14} style={{ color: WF.muted }} />}
+                                        <span className="text-xs" style={{ color: WF.muted }}>Two-Factor Authentication</span>
+                                        {enabled && (
+                                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
+                                                style={{ background: 'rgba(22,163,74,0.1)', color: '#14532D' }}>ON</span>
+                                        )}
+                                    </div>
+                                    {enabled ? (
+                                        <button onClick={() => disableFactor(verified[0].id)} disabled={disabling}
+                                            className="text-xs font-bold flex items-center gap-1 hover:underline"
+                                            style={{ color: WF.red }}>
+                                            {disabling ? <Loader2 size={11} className="animate-spin" /> : <ShieldOff size={11} />}
+                                            Disable
+                                        </button>
+                                    ) : !enrolling ? (
+                                        <button onClick={startEnroll}
+                                            className="text-xs font-bold flex items-center gap-1 hover:underline"
+                                            style={{ color: WF.red }}>
+                                            <Shield size={11} /> Enable
+                                        </button>
+                                    ) : null}
+                                </div>
+
+                                {mfaOk && (
+                                    <div className="mx-5 mb-3 mt-2 flex items-center gap-2 px-3 py-2 rounded-xl"
+                                        style={{ background: 'rgba(22,163,74,0.08)' }}>
+                                        <Check size={13} style={{ color: '#16A34A' }} />
+                                        <p className="text-xs font-bold" style={{ color: '#16A34A' }}>2FA enabled successfully!</p>
+                                    </div>
+                                )}
+
+                                {enrolling && (
+                                    <div className="px-5 pb-5 pt-4 space-y-4">
+                                        <div>
+                                            <p className="text-xs font-bold mb-1" style={{ color: WF.black }}>Step 1 — Scan QR code</p>
+                                            <p className="text-[11px]" style={{ color: WF.muted }}>
+                                                Open <strong>Google Authenticator</strong> or <strong>Authy</strong> and scan.
+                                            </p>
+                                        </div>
+                                        {qrCode && (
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="p-3 rounded-xl bg-white border"
+                                                    style={{ borderColor: WF.border }}
+                                                    dangerouslySetInnerHTML={{ __html: qrCode }} />
+                                                <div className="w-full p-2.5 rounded-xl" style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider mb-0.5" style={{ color: WF.muted }}>
+                                                        Can't scan? Manual key:
+                                                    </p>
+                                                    <p className="text-[11px] font-mono break-all" style={{ color: WF.black }}>{secret}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="space-y-3">
+                                            <p className="text-xs font-bold" style={{ color: WF.black }}>Step 2 — Enter 6-digit code</p>
+                                            <OtpInput value={otp} onChange={setOtp} />
+                                            {mfaErr && <p className="text-[11px] text-center" style={{ color: WF.red }}>{mfaErr}</p>}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => { setEnrolling(false); setOtp(''); setMfaErr(''); }}
+                                                className="flex-1 py-2.5 rounded-xl font-bold text-xs border"
+                                                style={{ borderColor: WF.border, color: WF.muted }}>
+                                                Cancel
+                                            </button>
+                                            <button onClick={verifyEnroll} disabled={otp.length !== 6}
+                                                className="flex-1 py-2.5 rounded-xl text-white font-bold text-xs disabled:opacity-40"
+                                                style={{ background: WF.red }}>
+                                                Verify & Activate
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 {/* Notifications */}
