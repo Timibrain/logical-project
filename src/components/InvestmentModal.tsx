@@ -155,8 +155,10 @@ export default function InvestmentModal({ isOpen, onClose, userId, userBalance, 
         }]);
 
         setLoading(false);
-        if (error) alert('Investment failed. Please try again.');
-        else setSuccess(true);
+        if (error) {
+            console.error('Investment error:', error);
+            alert(`Investment failed: ${error.message}`);
+        } else setSuccess(true);
     };
 
     if (!isOpen) return null;
