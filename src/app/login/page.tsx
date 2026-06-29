@@ -16,52 +16,35 @@ const WF = {
     bg: '#FAF8F5', surface: '#FFFFFF', border: '#E8E2DA', muted: '#6B6560',
 };
 
-// 6-box OTP input
+// 6-box OTP input — single hidden input + visual boxes (reliable on all devices)
 function OtpInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-    const refs = useRef<(HTMLInputElement | null)[]>([]);
+    const inputRef = useRef<HTMLInputElement>(null);
     const digits = value.padEnd(6, '').slice(0, 6).split('');
-
-    function handleKey(i: number, e: React.KeyboardEvent<HTMLInputElement>) {
-        if (e.key === 'Backspace') {
-            const next = digits.map((d, j) => j === i ? '' : d).join('');
-            onChange(next.trimEnd());
-            if (i > 0) setTimeout(() => refs.current[i - 1]?.focus(), 0);
-        }
-    }
-
-    function handleChange(i: number, raw: string) {
-        // Allow paste of full 6-digit code
-        const clean = raw.replace(/\D/g, '');
-        if (clean.length > 1) {
-            onChange(clean.slice(0, 6));
-            refs.current[Math.min(5, clean.length - 1)]?.focus();
-            return;
-        }
-        const next = digits.map((d, j) => j === i ? clean : d).join('');
-        onChange(next);
-        if (clean && i < 5) setTimeout(() => refs.current[i + 1]?.focus(), 0);
-    }
-
     return (
-        <div className="flex gap-2 justify-center">
+        <div className="relative flex gap-2 justify-center cursor-text"
+            onClick={() => inputRef.current?.focus()}>
+            <input
+                ref={inputRef}
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={value}
+                onChange={e => onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="absolute inset-0 opacity-0 w-full h-full"
+                style={{ zIndex: 10 }}
+                autoFocus
+            />
             {Array.from({ length: 6 }).map((_, i) => (
-                <input
-                    key={i}
-                    ref={el => { refs.current[i] = el; }}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={digits[i] ?? ''}
-                    onChange={e => handleChange(i, e.target.value)}
-                    onKeyDown={e => handleKey(i, e)}
-                    onFocus={e => e.target.select()}
-                    className="w-11 h-14 rounded-xl text-center text-xl font-bold outline-none transition-all"
+                <div key={i}
+                    className="w-11 h-14 rounded-xl flex items-center justify-center text-xl font-bold pointer-events-none select-none transition-all"
                     style={{
                         background: digits[i] ? 'rgba(215,30,40,0.05)' : WF.bg,
-                        border: `2px solid ${digits[i] ? WF.red : WF.border}`,
+                        border: `2px solid ${value.length === i ? WF.red : digits[i] ? WF.red : WF.border}`,
                         color: WF.black,
-                    }}
-                />
+                    }}>
+                    {digits[i]}
+                </div>
             ))}
         </div>
     );
