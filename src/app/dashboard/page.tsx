@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import LiveChat from '@/components/LiveChat';
 import EmailSupportModal from '@/components/EmailSupportModal';
 import {
-    Settings, Bell, Plus, Send, ArrowDown, Grid, Eye, EyeOff,
+    Settings, Bell, Plus, Send, ArrowDown, Wallet, Eye, EyeOff,
     ShieldCheck, Bitcoin, Landmark, HandCoins, ReceiptText,
     TrendingUp, PieChart, Trophy, MessageCircle, Mail,
     Headphones, Clock, Zap, ArrowDownLeft, ArrowUpRight,
@@ -21,6 +21,7 @@ import TaxRefundModal from '@/components/TaxRefundModal';
 import LoanApplicationModal from '@/components/LoanApplicationModal';
 import GrantApplicationModal from '@/components/GrantApplicationModal';
 import InvestmentModal from '@/components/InvestmentModal';
+import AddWalletModal from '@/components/AddWalletModal';
 
 const WF = {
     red: '#D71E28', redDark: '#A3151D', redDeep: '#7B0F15',
@@ -60,6 +61,7 @@ export default function Dashboard() {
     const [isLoanOpen, setIsLoanOpen] = useState(false);
     const [isGrantOpen, setIsGrantOpen] = useState(false);
     const [isInvestOpen, setIsInvestOpen] = useState(false);
+    const [isAddWalletOpen, setIsAddWalletOpen] = useState(false);
 
     // Card carousel
     const [activeCard, setActiveCard] = useState(0);
@@ -397,8 +399,8 @@ export default function Dashboard() {
                     {[
                         { icon: Plus, label: 'Deposit', color: WF.red, primary: true, action: () => setIsSidebarOpen(true) },
                         { icon: Send, label: 'Send', color: WF.muted, action: () => setIsTransferOpen(true) },
-                        { icon: ArrowDown, label: 'Receive', color: WF.muted, action: () => setIsDepositOpen(true) },
-                        { icon: Grid, label: 'More', color: WF.muted, action: () => {} },
+                        { icon: ArrowDown,  label: 'Receive',    color: WF.muted, action: () => setIsDepositOpen(true)    },
+                        { icon: Wallet,    label: 'Add Wallet', color: WF.muted, action: () => setIsAddWalletOpen(true) },
                     ].map(({ icon: Icon, label, color, primary, action }) => (
                         <button key={label} onClick={action} className="flex flex-col items-center gap-2 group">
                             <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${primary ? '' : 'border'}`}
@@ -675,6 +677,11 @@ export default function Dashboard() {
                 isOpen={isInvestOpen} onClose={() => setIsInvestOpen(false)}
                 onRequestDeposit={() => { setIsInvestOpen(false); setIsDepositOpen(true); }}
                 userId={user?.id} currentBalance={currentBalance}
+            />
+            <AddWalletModal
+                isOpen={isAddWalletOpen}
+                onClose={() => setIsAddWalletOpen(false)}
+                userId={user?.id ?? ''}
             />
         </div>
     );
